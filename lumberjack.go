@@ -87,10 +87,6 @@ type Logger struct {
 	// rotated and compressed ones.
 	MaxTotalSizeMB uint
 
-	// Compress determines if the rotated log files should be compressed
-	// using gzip. The default is not to perform compression.
-	Compress bool
-
 	size int64
 	file *os.File
 	mu   sync.Mutex

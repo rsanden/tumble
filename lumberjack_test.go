@@ -354,7 +354,6 @@ func TestCompressOnRotate(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		Compress:       true,
 		Filename:       filename,
 		MaxLogSizeMB:   10,
 		MaxTotalSizeMB: 50,
@@ -405,7 +404,6 @@ func TestCompressOnResume(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		Compress:       true,
 		Filename:       filename,
 		MaxLogSizeMB:   6,
 		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
