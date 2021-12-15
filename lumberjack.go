@@ -222,11 +222,6 @@ func (l *Logger) openNew() error {
 		if err := os.Rename(name, newname); err != nil {
 			return fmt.Errorf("can't rename log file: %s", err)
 		}
-
-		// this is a no-op anywhere but linux
-		if err := chown(name, info); err != nil {
-			return err
-		}
 	}
 
 	// we use truncate here because this should only get called when we've moved
@@ -475,10 +470,6 @@ func compressLogFile(src, dst string) (err error) {
 	fi, err := osStat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
-	}
-
-	if err := chown(dst, fi); err != nil {
-		return fmt.Errorf("failed to chown compressed log file: %v", err)
 	}
 
 	// If this file already exists, we presume it was created by
