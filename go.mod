@@ -1,3 +1,3 @@
-module github.com/natefinch/lumberjack
+module github.com/rsanden/tumble
 
-go 1.13
+go 1.17
