@@ -251,34 +251,6 @@ func TestTimeFromName(t *testing.T) {
 	}
 }
 
-func TestLocalTime(t *testing.T) {
-	currentTime = fakeTime
-	megabyte = 1
-
-	dir := makeTempDir("TestLocalTime", t)
-	defer os.RemoveAll(dir)
-
-	l := &Logger{
-		Filename:       logFile(dir),
-		MaxLogSizeMB:   10,
-		MaxTotalSizeMB: 15,
-		LocalTime:      true,
-	}
-	defer l.Close()
-	b := []byte("boo!")
-	n, err := l.Write(b)
-	isNil(err, t)
-	equals(len(b), n, t)
-
-	b2 := []byte("fooooooo!")
-	n2, err := l.Write(b2)
-	isNil(err, t)
-	equals(len(b2), n2, t)
-
-	existsWithContent(logFile(dir), b2, t)
-	existsWithContent(backupFileLocal(dir), b, t)
-}
-
 func TestRotate(t *testing.T) {
 	megabyte = 1
 
