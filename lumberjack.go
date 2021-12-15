@@ -259,10 +259,13 @@ func (l *Logger) millRunOnce() error {
 		return err
 	}
 
-	compressed := make(map[time.Time]logInfo)
+	// It is possible to have both an uncompressed and (partially) compressed file for the same log
+	// In this case, we overwrite the compressed file with a new one in compressLogFile().
+	// We overwrite keys over two passes on a map to ensure that logInfo entries are the current ones.
+	compressedMap := make(map[time.Time]logInfo)
 	for _, f := range oldFiles {
 		if strings.HasSuffix(f.Name(), compressSuffix) {
-			compressed[f.timestamp] = f
+			compressedMap[f.timestamp] = f
 		}
 	}
 	for _, f := range oldFiles {
@@ -276,23 +279,21 @@ func (l *Logger) millRunOnce() error {
 			if err != nil {
 				return err
 			}
-			compressed[f.timestamp] = logInfo{f.timestamp, fi}
+			compressedMap[f.timestamp] = logInfo{f.timestamp, fi}
 		}
 	}
 
-	timestamps := make([]time.Time, len(compressed))
-	i := 0
-	for timestamp := range compressed {
-		timestamps[i] = timestamp
-		i++
+	// Sort logInfo entries and discard the oldest once the maximum storage size has been exhausted.
+	// Note that we subtract the current log's maximum size, requiring compressed logs to fit
+	// within the remaining space (l.MaxTotalSizeMB - l.MaxLogSizeMB).
+	compressedFiles := make([]logInfo, 0, len(compressedMap))
+	for _, v := range compressedMap {
+		compressedFiles = append(compressedFiles, v)
 	}
-	sort.Slice(timestamps, func(i, j int) bool {
-		return timestamps[i].After(timestamps[j])
-	})
+	sort.Sort(byFormatTime(compressedFiles))
 
 	totalSizeBytes := int64(0)
-	for _, timestamp := range timestamps {
-		f := compressed[timestamp]
+	for _, f := range compressedFiles {
 		totalSizeBytes += f.Size()
 		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*megabyte) {
 			err := os.Remove(filepath.Join(l.dir(), f.Name()))
@@ -306,7 +307,7 @@ func (l *Logger) millRunOnce() error {
 }
 
 // millRun runs in a goroutine to manage post-rotation compression and removal
-// of old log files.
+// of old log files. The nested loop structure drains the channel on each run.
 func (l *Logger) millRun() {
 	for {
 		<-l.millCh
