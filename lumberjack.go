@@ -84,7 +84,7 @@ type Logger struct {
 
 	// MaxLogSizeMB is the maximum size in megabytes of the log file before it gets
 	// rotated. It defaults to 100 megabytes.
-	MaxLogSizeMB int
+	MaxLogSizeMB uint
 
 	// MaxAge is the maximum number of days to retain old log files based on the
 	// timestamp encoded in their filename.  Note that a day is defined as 24
