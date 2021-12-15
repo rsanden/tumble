@@ -70,12 +70,9 @@ var _ io.WriteCloser = (*Logger)(nil)
 //
 // Whenever a new logfile gets created, old log files may be deleted.  The most
 // recent files according to the encoded timestamp will be retained, up to a
-// number equal to MaxBackups (or all of them if MaxBackups is 0).  Any files
-// with an encoded timestamp older than MaxAge days are deleted, regardless of
-// MaxBackups.  Note that the time encoded in the timestamp is the rotation
-// time, which may differ from the last time that file was written to.
-//
-// If MaxBackups and MaxAge are both 0, no old log files will be deleted.
+// maximum size determined by MaxTotalSizeMB. Note that the time encoded in the
+// timestamp is the rotation time, which may differ from the last time
+// that file was written to.
 type Logger struct {
 	// Filename is the file to write logs to.  Backup log files will be retained
 	// in the same directory.  It uses <processname>-lumberjack.log in
@@ -83,20 +80,12 @@ type Logger struct {
 	Filename string
 
 	// MaxLogSizeMB is the maximum size in megabytes of the log file before it gets
-	// rotated. It defaults to 100 megabytes.
+	// rotated.
 	MaxLogSizeMB uint
 
-	// MaxAge is the maximum number of days to retain old log files based on the
-	// timestamp encoded in their filename.  Note that a day is defined as 24
-	// hours and may not exactly correspond to calendar days due to daylight
-	// savings, leap seconds, etc. The default is not to remove old log files
-	// based on age.
-	MaxAge int
-
-	// MaxBackups is the maximum number of old log files to retain.  The default
-	// is to retain all old log files (though MaxAge may still cause them to get
-	// deleted.)
-	MaxBackups int
+	// MaxTotalSizeMB is the maximum size in megabytes of all log files, including
+	// rotated and compressed ones.
+	MaxTotalSizeMB uint
 
 	// LocalTime determines if the time used for formatting the timestamps in
 	// backup files is the computer's local time.  The default is to use UTC
@@ -125,7 +114,7 @@ var (
 	// megabyte is the conversion factor between MaxLogSizeMB and bytes.  It is a
 	// variable so tests can mock it out and not need to write megabytes of data
 	// to disk.
-	megabyte = 1024 * 1024
+	megabyte = uint(1024 * 1024)
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -141,9 +130,7 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 		if err = l.openExistingOrNew(len(p)); err != nil {
 			return 0, err
 		}
-	}
-
-	if l.size+writeLen > l.max() {
+	} else if l.size+writeLen > l.max() {
 		if err := l.rotate(); err != nil {
 			return 0, err
 		}
@@ -280,60 +267,23 @@ func (l *Logger) filename() string {
 
 // millRunOnce performs compression and removal of stale log files.
 // Log files are compressed if enabled via configuration and old log
-// files are removed, keeping at most l.MaxBackups files, as long as
-// none of them are older than MaxAge.
+// files are removed
 func (l *Logger) millRunOnce() error {
-	if l.MaxBackups == 0 && l.MaxAge == 0 && !l.Compress {
-		return nil
-	}
-
 	files, err := l.oldLogFiles()
 	if err != nil {
 		return err
 	}
 
 	var compress, remove []logInfo
-
-	if l.MaxBackups > 0 && l.MaxBackups < len(files) {
-		preserved := make(map[string]bool)
-		var remaining []logInfo
-		for _, f := range files {
-			// Only count the uncompressed log file or the
-			// compressed log file, not both.
-			fn := f.Name()
-			if strings.HasSuffix(fn, compressSuffix) {
-				fn = fn[:len(fn)-len(compressSuffix)]
-			}
-			preserved[fn] = true
-
-			if len(preserved) > l.MaxBackups {
-				remove = append(remove, f)
-			} else {
-				remaining = append(remaining, f)
-			}
+	totalSizeBytes := int64(0)
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), compressSuffix) {
+			compress = append(compress, f)
+			continue
 		}
-		files = remaining
-	}
-	if l.MaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
-		cutoff := currentTime().Add(-1 * diff)
-
-		var remaining []logInfo
-		for _, f := range files {
-			if f.timestamp.Before(cutoff) {
-				remove = append(remove, f)
-			} else {
-				remaining = append(remaining, f)
-			}
-		}
-		files = remaining
-	}
-
-	if l.Compress {
-		for _, f := range files {
-			if !strings.HasSuffix(f.Name(), compressSuffix) {
-				compress = append(compress, f)
-			}
+		totalSizeBytes += f.Size()
+		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*megabyte) {
+			remove = append(remove, f)
 		}
 	}
 
