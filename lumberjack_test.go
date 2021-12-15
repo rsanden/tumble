@@ -44,6 +44,9 @@ func TestNewFile(t *testing.T) {
 	equals(len(b), n, t)
 	existsWithContent(logFile(dir), b, t)
 	fileCount(dir, 1, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestOpenExisting(t *testing.T) {
@@ -73,6 +76,9 @@ func TestOpenExisting(t *testing.T) {
 
 	// make sure no other files were created
 	fileCount(dir, 1, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestDefaultFilename(t *testing.T) {
@@ -88,6 +94,9 @@ func TestDefaultFilename(t *testing.T) {
 	isNil(err, t)
 	equals(len(b), n, t)
 	existsWithContent(filename, b, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestFirstWriteRotate(t *testing.T) {
@@ -117,8 +126,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b), n, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	existsWithContent(filename, b, t)
@@ -132,6 +140,9 @@ func TestFirstWriteRotate(t *testing.T) {
 	existsWithContent(backupFile(dir)+compressSuffix, bc.Bytes(), t)
 
 	fileCount(dir, 2, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestCleanupExistingBackups(t *testing.T) {
@@ -181,12 +192,14 @@ func TestCleanupExistingBackups(t *testing.T) {
 	isNil(err, t)
 	equals(len(b2), n, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	// now we should only have 2 files left - the primary and one backup
 	fileCount(dir, 2, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestOldLogFiles(t *testing.T) {
@@ -227,6 +240,9 @@ func TestOldLogFiles(t *testing.T) {
 	// should be sorted by newest file first, which would be t2
 	equals(t2, files[0].timestamp, t)
 	equals(t1, files[1].timestamp, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestTimeFromName(t *testing.T) {
@@ -249,6 +265,9 @@ func TestTimeFromName(t *testing.T) {
 		equals(got, test.want, t)
 		equals(err != nil, test.wantErr, t)
 	}
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestRotate(t *testing.T) {
@@ -279,8 +298,7 @@ func TestRotate(t *testing.T) {
 	err = l.Rotate()
 	isNil(err, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	filename2 := backupFile(dir)
@@ -300,8 +318,7 @@ func TestRotate(t *testing.T) {
 	err = l.Rotate()
 	isNil(err, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	filename3 := backupFile(dir)
@@ -323,8 +340,7 @@ func TestRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b2), n, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	fileCount(dir, 3, t)
@@ -335,14 +351,16 @@ func TestRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b3), n, t)
 
-	// we need to wait a little bit since the files get deleted on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	fileCount(dir, 3, t)
 
 	// this will use the new fake time
 	existsWithContent(filename, b3, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestCompressOnRotate(t *testing.T) {
@@ -372,8 +390,7 @@ func TestCompressOnRotate(t *testing.T) {
 	err = l.Rotate()
 	isNil(err, t)
 
-	// we need to wait a little bit since the files get compressed on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	// the old logfile should be moved aside and the main logfile should have
@@ -393,6 +410,9 @@ func TestCompressOnRotate(t *testing.T) {
 	notExist(backupFile(dir), t)
 
 	fileCount(dir, 2, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 func TestCompressOnResume(t *testing.T) {
@@ -425,8 +445,7 @@ func TestCompressOnResume(t *testing.T) {
 	equals(len(b2), n, t)
 	existsWithContent(filename, b2, t)
 
-	// we need to wait a little bit since the files get compressed on a different
-	// goroutine.
+	// we need to wait a little bit since the files get deleted on a different goroutine.
 	<-time.After(sleepTime)
 
 	// The write should have started the compression - a compressed version of
@@ -441,6 +460,9 @@ func TestCompressOnResume(t *testing.T) {
 	notExist(filename2, t)
 
 	fileCount(dir, 2, t)
+
+	// we need to wait a little bit since the files get deleted on a different goroutine.
+	<-time.After(sleepTime)
 }
 
 // makeTempDir creates a file with a semi-unique name in the OS temp directory.

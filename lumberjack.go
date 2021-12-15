@@ -332,7 +332,7 @@ func (l *Logger) millRun() {
 // starting the mill goroutine if necessary.
 func (l *Logger) mill() {
 	l.startMill.Do(func() {
-		l.millCh = make(chan bool, 5)
+		l.millCh = make(chan bool, 2)
 		go l.millRun()
 	})
 	select {
