@@ -39,6 +39,7 @@ const (
 	backupTimeFormat = "2006-01-02T15-04-05.000"
 	compressSuffix   = ".gz"
 	defaultMaxSize   = 100
+	fileMode         = 0644
 )
 
 // ensure we always implement io.WriteCloser
@@ -212,11 +213,8 @@ func (l *Logger) openNew() error {
 	}
 
 	name := l.filename()
-	mode := os.FileMode(0600)
-	info, err := osStat(name)
+	_, err = osStat(name)
 	if err == nil {
-		// Copy the mode off the old logfile.
-		mode = info.Mode()
 		// move the existing file
 		newname := backupName(name, l.LocalTime)
 		if err := os.Rename(name, newname); err != nil {
@@ -227,7 +225,7 @@ func (l *Logger) openNew() error {
 	// we use truncate here because this should only get called when we've moved
 	// the file ourselves. if someone else creates the file in the meantime,
 	// just wipe out the contents.
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
 	if err != nil {
 		return fmt.Errorf("can't open new logfile: %s", err)
 	}
@@ -272,7 +270,7 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 		return l.rotate()
 	}
 
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, fileMode)
 	if err != nil {
 		// if we fail to open the old log file for some reason, just ignore
 		// it and open a new log file.
@@ -467,14 +465,14 @@ func compressLogFile(src, dst string) (err error) {
 	}
 	defer f.Close()
 
-	fi, err := osStat(src)
+	_, err = osStat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress the log file.
-	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fi.Mode())
+	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(fileMode))
 	if err != nil {
 		return fmt.Errorf("failed to open compressed log file: %v", err)
 	}

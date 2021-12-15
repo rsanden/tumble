@@ -51,7 +51,7 @@ func TestOpenExisting(t *testing.T) {
 
 	filename := logFile(dir)
 	data := []byte("foo!")
-	err := ioutil.WriteFile(filename, data, 0644)
+	err := ioutil.WriteFile(filename, data, fileMode)
 	isNil(err, t)
 	existsWithContent(filename, data, t)
 
@@ -176,7 +176,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	defer l.Close()
 
 	start := []byte("boooooo!")
-	err := ioutil.WriteFile(filename, start, 0600)
+	err := ioutil.WriteFile(filename, start, fileMode)
 	isNil(err, t)
 
 	newFakeTime()
@@ -265,7 +265,7 @@ func TestMaxBackups(t *testing.T) {
 	// create a file that is close to but different from the logfile name.
 	// It shouldn't get caught by our deletion filters.
 	notlogfile := logFile(dir) + ".foo"
-	err = ioutil.WriteFile(notlogfile, []byte("data"), 0644)
+	err = ioutil.WriteFile(notlogfile, []byte("data"), fileMode)
 	isNil(err, t)
 
 	// Make a directory that exactly matches our log file filters... it still
@@ -283,7 +283,7 @@ func TestMaxBackups(t *testing.T) {
 	// not be counted since both the compressed and the uncompressed
 	// log files still exist.
 	compLogFile := fourthFilename + compressSuffix
-	err = ioutil.WriteFile(compLogFile, []byte("compress"), 0644)
+	err = ioutil.WriteFile(compLogFile, []byte("compress"), fileMode)
 	isNil(err, t)
 
 	// this will make us rotate again
@@ -332,24 +332,24 @@ func TestCleanupExistingBackups(t *testing.T) {
 
 	data := []byte("data")
 	backup := backupFile(dir)
-	err := ioutil.WriteFile(backup, data, 0644)
+	err := ioutil.WriteFile(backup, data, fileMode)
 	isNil(err, t)
 
 	newFakeTime()
 
 	backup = backupFile(dir)
-	err = ioutil.WriteFile(backup+compressSuffix, data, 0644)
+	err = ioutil.WriteFile(backup+compressSuffix, data, fileMode)
 	isNil(err, t)
 
 	newFakeTime()
 
 	backup = backupFile(dir)
-	err = ioutil.WriteFile(backup, data, 0644)
+	err = ioutil.WriteFile(backup, data, fileMode)
 	isNil(err, t)
 
 	// now create a primary log file with some data
 	filename := logFile(dir)
-	err = ioutil.WriteFile(filename, data, 0644)
+	err = ioutil.WriteFile(filename, data, fileMode)
 	isNil(err, t)
 
 	l := &Logger{
@@ -654,9 +654,9 @@ func TestCompressOnResume(t *testing.T) {
 	// Create a backup file and empty "compressed" file.
 	filename2 := backupFile(dir)
 	b := []byte("foo!")
-	err := ioutil.WriteFile(filename2, b, 0644)
+	err := ioutil.WriteFile(filename2, b, fileMode)
 	isNil(err, t)
-	err = ioutil.WriteFile(filename2+compressSuffix, []byte{}, 0644)
+	err = ioutil.WriteFile(filename2+compressSuffix, []byte{}, fileMode)
 	isNil(err, t)
 
 	newFakeTime()
