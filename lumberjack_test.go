@@ -33,6 +33,7 @@ func TestNewFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 	l := &Logger{
 		Filename: logFile(dir),
+		MaxSize:  100,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -56,6 +57,7 @@ func TestOpenExisting(t *testing.T) {
 
 	l := &Logger{
 		Filename: filename,
+		MaxSize:  100,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -78,6 +80,7 @@ func TestMakeLogDir(t *testing.T) {
 	filename := logFile(dir)
 	l := &Logger{
 		Filename: filename,
+		MaxSize:  100,
 	}
 	defer l.Close()
 	b := []byte("boo!")

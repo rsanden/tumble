@@ -38,7 +38,6 @@ import (
 const (
 	backupTimeFormat = "2006-01-02T15-04-05.000"
 	compressSuffix   = ".gz"
-	defaultMaxSize   = 100
 	fileMode         = 0644
 )
 
@@ -430,9 +429,6 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 
 // max returns the maximum size in bytes of log files before rolling.
 func (l *Logger) max() int64 {
-	if l.MaxSize == 0 {
-		return int64(defaultMaxSize * megabyte)
-	}
 	return int64(l.MaxSize) * int64(megabyte)
 }
 
