@@ -72,25 +72,6 @@ func TestOpenExisting(t *testing.T) {
 	fileCount(dir, 1, t)
 }
 
-func TestMakeLogDir(t *testing.T) {
-	currentTime = fakeTime
-	dir := time.Now().Format("TestMakeLogDir" + backupTimeFormat)
-	dir = filepath.Join(os.TempDir(), dir)
-	defer os.RemoveAll(dir)
-	filename := logFile(dir)
-	l := &Logger{
-		Filename: filename,
-		MaxSize:  100,
-	}
-	defer l.Close()
-	b := []byte("boo!")
-	n, err := l.Write(b)
-	isNil(err, t)
-	equals(len(b), n, t)
-	existsWithContent(logFile(dir), b, t)
-	fileCount(dir, 1, t)
-}
-
 func TestDefaultFilename(t *testing.T) {
 	currentTime = fakeTime
 	dir := os.TempDir()
