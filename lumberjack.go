@@ -269,47 +269,75 @@ func (l *Logger) filename() string {
 // Log files are compressed if enabled via configuration and old log
 // files are removed
 func (l *Logger) millRunOnce() error {
-	files, err := l.oldLogFiles()
+	oldFiles, err := l.oldLogFiles()
 	if err != nil {
 		return err
 	}
 
-	var compress, remove []logInfo
-	totalSizeBytes := int64(0)
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), compressSuffix) {
-			compress = append(compress, f)
-			continue
+	compressed := make(map[time.Time]logInfo)
+	for _, f := range oldFiles {
+		if strings.HasSuffix(f.Name(), compressSuffix) {
+			compressed[f.timestamp] = f
 		}
+	}
+	for _, f := range oldFiles {
+		if !strings.HasSuffix(f.Name(), compressSuffix) {
+			fn := filepath.Join(l.dir(), f.Name())
+			err := compressLogFile(fn, fn+compressSuffix)
+			if err != nil {
+				return err
+			}
+			fi, err := os.Stat(fn + compressSuffix)
+			if err != nil {
+				return err
+			}
+			compressed[f.timestamp] = logInfo{f.timestamp, fi}
+		}
+	}
+
+	timestamps := make([]time.Time, len(compressed))
+	i := 0
+	for timestamp := range compressed {
+		timestamps[i] = timestamp
+		i++
+	}
+	sort.Slice(timestamps, func(i, j int) bool {
+		return timestamps[i].After(timestamps[j])
+	})
+
+	totalSizeBytes := int64(0)
+	for _, timestamp := range timestamps {
+		f := compressed[timestamp]
 		totalSizeBytes += f.Size()
 		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*megabyte) {
-			remove = append(remove, f)
+			err := os.Remove(filepath.Join(l.dir(), f.Name()))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	for _, f := range remove {
-		errRemove := os.Remove(filepath.Join(l.dir(), f.Name()))
-		if err == nil && errRemove != nil {
-			err = errRemove
-		}
-	}
-	for _, f := range compress {
-		fn := filepath.Join(l.dir(), f.Name())
-		errCompress := compressLogFile(fn, fn+compressSuffix)
-		if err == nil && errCompress != nil {
-			err = errCompress
-		}
-	}
-
-	return err
+	return nil
 }
 
 // millRun runs in a goroutine to manage post-rotation compression and removal
 // of old log files.
 func (l *Logger) millRun() {
-	for range l.millCh {
-		// what am I going to do, log this?
-		_ = l.millRunOnce()
+	for {
+		<-l.millCh
+	outer:
+		for {
+			select {
+			case <-l.millCh:
+				continue
+			default:
+				break outer
+			}
+		}
+		er := l.millRunOnce()
+		if er != nil {
+			fmt.Fprintln(os.Stderr, "error in millRunOnce:", er)
+		}
 	}
 }
 
@@ -317,7 +345,7 @@ func (l *Logger) millRun() {
 // starting the mill goroutine if necessary.
 func (l *Logger) mill() {
 	l.startMill.Do(func() {
-		l.millCh = make(chan bool, 1)
+		l.millCh = make(chan bool, 5)
 		go l.millRun()
 	})
 	select {

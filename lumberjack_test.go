@@ -291,7 +291,7 @@ func TestRotate(t *testing.T) {
 	l := &Logger{
 		Filename:       filename,
 		MaxLogSizeMB:   12,
-		MaxTotalSizeMB: 40,
+		MaxTotalSizeMB: 77, /* gz files are between 23 and 29 bytes */
 	}
 	defer l.Close()
 	b := []byte("data")
@@ -344,6 +344,7 @@ func TestRotate(t *testing.T) {
 
 	existsWithContent(filename, []byte{}, t)
 	fileCount(dir, 3, t)
+	newFakeTime()
 
 	b2 := []byte("foooooo!") /* This does not trigger a rotate */
 	n, err = l.Write(b2)
@@ -355,6 +356,7 @@ func TestRotate(t *testing.T) {
 	<-time.After(sleepTime)
 
 	fileCount(dir, 3, t)
+	newFakeTime()
 
 	b3 := []byte("foooooo!") /* This triggers a rotate */
 	n, err = l.Write(b3)
@@ -365,7 +367,7 @@ func TestRotate(t *testing.T) {
 	// goroutine.
 	<-time.After(sleepTime)
 
-	fileCount(dir, 2, t)
+	fileCount(dir, 3, t)
 
 	// this will use the new fake time
 	existsWithContent(filename, b3, t)
@@ -433,8 +435,8 @@ func TestCompressOnResume(t *testing.T) {
 	l := &Logger{
 		Compress:       true,
 		Filename:       filename,
-		MaxLogSizeMB:   10,
-		MaxTotalSizeMB: 15,
+		MaxLogSizeMB:   6,
+		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
 	}
 	defer l.Close()
 
@@ -447,7 +449,6 @@ func TestCompressOnResume(t *testing.T) {
 	isNil(err, t)
 
 	newFakeTime()
-
 	b2 := []byte("boo!")
 	n, err := l.Write(b2)
 	isNil(err, t)
