@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -69,26 +68,6 @@ func TestOpenExisting(t *testing.T) {
 
 	// make sure no other files were created
 	fileCount(dir, 1, t)
-}
-
-func TestWriteTooLong(t *testing.T) {
-	currentTime = fakeTime
-	megabyte = 1
-	dir := makeTempDir("TestWriteTooLong", t)
-	defer os.RemoveAll(dir)
-	l := &Logger{
-		Filename: logFile(dir),
-		MaxSize:  5,
-	}
-	defer l.Close()
-	b := []byte("booooooooooooooo!")
-	n, err := l.Write(b)
-	notNil(err, t)
-	equals(0, n, t)
-	equals(err.Error(),
-		fmt.Sprintf("write length %d exceeds maximum file size %d", len(b), l.MaxSize), t)
-	_, err = os.Stat(logFile(dir))
-	assert(os.IsNotExist(err), t, "File exists, but should not have been created")
 }
 
 func TestMakeLogDir(t *testing.T) {
