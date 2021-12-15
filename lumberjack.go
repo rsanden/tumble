@@ -30,15 +30,15 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	backupTimeFormat = "2006-01-02T15-04-05.000"
-	compressSuffix   = ".gz"
-	fileMode         = 0644
+	compressSuffix = ".gz"
+	fileMode       = 0644
 )
 
 // ensure we always implement io.WriteCloser
@@ -208,9 +208,7 @@ func backupName(name string) string {
 	ext := filepath.Ext(filename)
 	prefix := filename[:len(filename)-len(ext)]
 	t := currentTime().UTC()
-
-	timestamp := t.Format(backupTimeFormat)
-	return filepath.Join(dir, fmt.Sprintf("%s-%s%s", prefix, timestamp, ext))
+	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", prefix, t.Unix(), ext))
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
@@ -384,7 +382,11 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 		return time.Time{}, errors.New("mismatched extension")
 	}
 	ts := filename[len(prefix) : len(filename)-len(ext)]
-	return time.Parse(backupTimeFormat, ts)
+	secs, er := strconv.ParseInt(ts, 10, 64)
+	if er != nil {
+		return time.Time{}, errors.New("invalid timestamp")
+	}
+	return time.Unix(secs, 0).UTC(), nil
 }
 
 // max returns the maximum size in bytes of log files before rolling.

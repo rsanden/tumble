@@ -3,6 +3,7 @@ package lumberjack
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ const sleepTime = 100 * time.Millisecond
 // Since all the tests uses the time to determine filenames etc, we need to
 // control the wall clock as much as possible, which means having a wall clock
 // that doesn't change unless we want it to.
-var fakeCurrentTime = time.Now()
+var fakeCurrentTime = time.Now().UTC()
 
 func fakeTime() time.Time {
 	return fakeCurrentTime
@@ -210,8 +211,7 @@ func TestOldLogFiles(t *testing.T) {
 
 	// This gives us a time with the same precision as the time we get from the
 	// timestamp in the name.
-	t1, err := time.Parse(backupTimeFormat, fakeTime().UTC().Format(backupTimeFormat))
-	isNil(err, t)
+	t1 := time.Unix(fakeTime().Unix(), 0).UTC()
 
 	backup := backupFile(dir)
 	err = ioutil.WriteFile(backup, data, 07)
@@ -219,8 +219,7 @@ func TestOldLogFiles(t *testing.T) {
 
 	newFakeTime()
 
-	t2, err := time.Parse(backupTimeFormat, fakeTime().UTC().Format(backupTimeFormat))
-	isNil(err, t)
+	t2 := time.Unix(fakeTime().Unix(), 0).UTC()
 
 	backup2 := backupFile(dir)
 	err = ioutil.WriteFile(backup2, data, 07)
@@ -247,9 +246,9 @@ func TestTimeFromName(t *testing.T) {
 		want     time.Time
 		wantErr  bool
 	}{
-		{"foo-2014-05-04T14-44-33.555.log", time.Date(2014, 5, 4, 14, 44, 33, 555000000, time.UTC), false},
-		{"foo-2014-05-04T14-44-33.555", time.Time{}, true},
-		{"2014-05-04T14-44-33.555.log", time.Time{}, true},
+		{"foo-1399214673.log", time.Date(2014, 5, 4, 14, 44, 33, 000000000, time.UTC), false},
+		{"foo-1399214673", time.Time{}, true},
+		{"1399214673.log", time.Time{}, true},
 		{"foo.log", time.Time{}, true},
 	}
 
@@ -452,7 +451,7 @@ func TestCompressOnResume(t *testing.T) {
 // It should be based on the name of the test, to keep parallel tests from
 // colliding, and must be cleaned up after the test is finished.
 func makeTempDir(name string, t testing.TB) string {
-	dir := time.Now().Format(name + backupTimeFormat)
+	dir := fmt.Sprintf("%s-%d", name, time.Now().UTC().UnixNano())
 	dir = filepath.Join(os.TempDir(), dir)
 	isNilUp(os.Mkdir(dir, 0700), t, 1)
 	return dir
@@ -476,17 +475,8 @@ func logFile(dir string) string {
 }
 
 func backupFile(dir string) string {
-	return filepath.Join(dir, "foobar-"+fakeTime().UTC().Format(backupTimeFormat)+".log")
-}
-
-func backupFileLocal(dir string) string {
-	return filepath.Join(dir, "foobar-"+fakeTime().Format(backupTimeFormat)+".log")
-}
-
-// logFileLocal returns the log file name in the given directory for the current
-// fake time using the local timezone.
-func logFileLocal(dir string) string {
-	return filepath.Join(dir, fakeTime().Format(backupTimeFormat))
+	fname := fmt.Sprintf("foobar-%d.log", fakeTime().Unix())
+	return filepath.Join(dir, fname)
 }
 
 // fileCount checks that the number of files in the directory is exp.
