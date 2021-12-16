@@ -294,7 +294,7 @@ func (l *Logger) millRunOnce() error {
 			if err != nil {
 				return err
 			}
-			compressedMap[f.timestamp] = logInfo{f.timestamp, fi}
+			compressedMap[f.timestamp] = logInfo{fi, f.timestamp}
 		}
 	}
 
@@ -370,11 +370,11 @@ func (l *Logger) oldLogFiles() ([]logInfo, error) {
 			continue
 		}
 		if t, err := l.timeFromName(f.Name(), prefix, ext); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+			logFiles = append(logFiles, logInfo{f, t})
 			continue
 		}
 		if t, err := l.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+			logFiles = append(logFiles, logInfo{f, t})
 			continue
 		}
 		// error parsing means that the suffix at the end was not generated
@@ -477,8 +477,8 @@ func compressLogFile(src, dst string) (err error) {
 // logInfo is a convenience struct to return the filename and its embedded
 // timestamp.
 type logInfo struct {
-	timestamp time.Time
 	os.FileInfo
+	timestamp time.Time
 }
 
 // byFormatTime sorts by newest time formatted in the name.
