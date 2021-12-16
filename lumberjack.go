@@ -87,6 +87,27 @@ type Logger struct {
 	// rotated and compressed ones.
 	MaxTotalSizeMB uint
 
+	// FormatFn is a formatting function that processes input before it is written.
+	// It is typically used to add a timestamp in a configurable format.
+	// The buf parameter is a buffer to be modified and returned (prevents allocations).
+	//
+	// In addition to returning the buffer, it needs to also return the index
+	// where the msg begins. This is so the caller can calculate the correct
+	// return value in the case of a write error.
+	//
+	// For example:
+	//
+	//   formatFn = func(msg []byte, buf []byte) ([]byte, int) {
+	//       now := time.Now().UTC().Format("2006-01-02 15:04:05.000")
+	//       buf = append(buf, []byte(now)...)      // This always has length 23
+	//       buf = append(buf, []byte(" : ")...)    // This always has length 3
+	//       buf = append(buf, msg...)              // Therefore, this starts at index 26
+	//       return buf, 26                         // alternatively, len(now)+len(" : ")
+	//   }
+	//
+	FormatFn func(msg []byte, buf []byte) ([]byte, int)
+	fmtbuf   []byte
+
 	size int64
 	file *os.File
 	mu   sync.Mutex
@@ -124,9 +145,28 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 		}
 	}
 
-	n, err = l.file.Write(p)
-	l.size += int64(n)
+	var msg []byte
+	var msgIdx int
+	if l.FormatFn != nil {
+		l.fmtbuf = l.fmtbuf[:0]
+		l.fmtbuf, msgIdx = l.FormatFn(p, l.fmtbuf)
+		msg = l.fmtbuf
+	} else {
+		msg = p
+	}
 
+	n, err = l.file.Write(msg)
+	l.size += int64(n)
+	if l.FormatFn != nil {
+		// Return length of p consumed
+		if n < msgIdx {
+			return 0, err
+		}
+		if n-msgIdx > len(p) {
+			return len(p), err
+		}
+		return n - msgIdx, err
+	}
 	return n, err
 }
 
