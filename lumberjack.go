@@ -113,8 +113,8 @@ type Logger struct {
 
 var (
 	// These constants are mocked out by tests
-	currentTime = time.Now
-	MB          = uint(1024 * 1024)
+	nowFn = time.Now
+	MB    = uint(1024 * 1024)
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -214,7 +214,7 @@ func backupName(name string) string {
 	filename := filepath.Base(name)
 	ext := filepath.Ext(filename)
 	prefix := filename[:len(filename)-len(ext)]
-	t := currentTime().UTC()
+	t := nowFn().UTC()
 	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", prefix, t.Unix(), ext))
 }
 

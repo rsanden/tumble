@@ -34,7 +34,7 @@ func fakeTime() time.Time {
 }
 
 func TestNewFile(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 
 	dir := makeTempDir("TestNewFile", t)
 	defer os.RemoveAll(dir)
@@ -56,7 +56,7 @@ func TestNewFile(t *testing.T) {
 }
 
 func TestOpenExisting(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 	dir := makeTempDir("TestOpenExisting", t)
 	defer os.RemoveAll(dir)
 
@@ -87,7 +87,7 @@ func TestOpenExisting(t *testing.T) {
 }
 
 func TestFirstWriteRotate(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 	MB = 1
 	dir := makeTempDir("TestFirstWriteRotate", t)
 	defer os.RemoveAll(dir)
@@ -134,7 +134,7 @@ func TestCleanupExistingBackups(t *testing.T) {
 	// test that if we start with more backup files than we're supposed to have
 	// in total, that extra ones get cleaned up when we rotate.
 
-	currentTime = fakeTime
+	nowFn = fakeTime
 	MB = 1
 
 	dir := makeTempDir("TestCleanupExistingBackups", t)
@@ -186,7 +186,7 @@ func TestCleanupExistingBackups(t *testing.T) {
 }
 
 func TestOldLogFiles(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 	MB = 1
 
 	dir := makeTempDir("TestOldLogFiles", t)
@@ -252,7 +252,7 @@ func TestTimeFromName(t *testing.T) {
 func TestRotate(t *testing.T) {
 	MB = 1
 
-	currentTime = fakeTime
+	nowFn = fakeTime
 	dir := makeTempDir("TestRotate", t)
 	defer os.RemoveAll(dir)
 
@@ -338,7 +338,7 @@ func TestRotate(t *testing.T) {
 }
 
 func TestCompressOnRotate(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 	MB = 1
 
 	dir := makeTempDir("TestCompressOnRotate", t)
@@ -388,7 +388,7 @@ func TestCompressOnRotate(t *testing.T) {
 }
 
 func TestCompressOnResume(t *testing.T) {
-	currentTime = fakeTime
+	nowFn = fakeTime
 	MB = 1
 
 	dir := makeTempDir("TestCompressOnResume", t)
