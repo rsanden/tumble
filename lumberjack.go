@@ -193,7 +193,7 @@ func (l *Logger) rotate() error {
 // openNew opens a new log file for writing, moving any old log file out of the
 // way.  This methods assumes the file has already been closed.
 func (l *Logger) openNew() error {
-	name := l.filename()
+	name := l.Filename
 	_, err := os.Stat(name)
 	if err == nil {
 		// move the existing file
@@ -232,7 +232,7 @@ func backupName(name string) string {
 func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
-	filename := l.filename()
+	filename := l.Filename
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return l.openNew()
@@ -254,15 +254,6 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.file = file
 	l.size = info.Size()
 	return nil
-}
-
-// filename generates the name of the logfile from the current time.
-func (l *Logger) filename() string {
-	if l.Filename != "" {
-		return l.Filename
-	}
-	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
-	return filepath.Join(os.TempDir(), name)
 }
 
 // millRunOnce performs compression and removal of stale log files.
@@ -411,13 +402,13 @@ func (l *Logger) max() int64 {
 
 // dir returns the directory for the current filename.
 func (l *Logger) dir() string {
-	return filepath.Dir(l.filename())
+	return filepath.Dir(l.Filename)
 }
 
 // prefixAndExt returns the filename part and extension part from the Logger's
 // filename.
 func (l *Logger) prefixAndExt() (prefix, ext string) {
-	filename := filepath.Base(l.filename())
+	filename := filepath.Base(l.Filename)
 	ext = filepath.Ext(filename)
 	prefix = filename[:len(filename)-len(ext)] + "-"
 	return prefix, ext

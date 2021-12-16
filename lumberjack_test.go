@@ -18,6 +18,11 @@ const sleepTime = 100 * time.Millisecond
 // Running these tests in parallel will almost certainly cause sporadic (or even
 // regular) failures, because they're all messing with the same global variable
 // that controls the logic's mocked time.Now.  So... don't do that.
+//
+// Run tests sequentially using:
+//
+//     go test -p 1
+//
 
 // Since all the tests uses the time to determine filenames etc, we need to
 // control the wall clock as much as possible, which means having a wall clock
@@ -77,23 +82,6 @@ func TestOpenExisting(t *testing.T) {
 
 	// make sure no other files were created
 	fileCount(dir, 1, t)
-
-	<-time.After(sleepTime)
-}
-
-func TestDefaultFilename(t *testing.T) {
-	currentTime = fakeTime
-	dir := os.TempDir()
-	filename := filepath.Join(dir, filepath.Base(os.Args[0])+"-lumberjack.log")
-	defer os.Remove(filename)
-	l := &Logger{}
-	defer l.Close()
-	b := []byte("boo!")
-	n, err := l.Write(b)
-
-	isNil(err, t)
-	equals(len(b), n, t)
-	existsWithContent(filename, b, t)
 
 	<-time.After(sleepTime)
 }
