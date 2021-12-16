@@ -114,7 +114,7 @@ type Logger struct {
 var (
 	// These constants are mocked out by tests
 	currentTime = time.Now
-	megabyte    = uint(1024 * 1024)
+	MB          = uint(1024 * 1024)
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -293,7 +293,7 @@ func (l *Logger) millRunOnce() error {
 	totalSizeBytes := int64(0)
 	for _, f := range compressedFiles {
 		totalSizeBytes += f.Size()
-		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*megabyte) {
+		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*MB) {
 			err := os.Remove(filepath.Join(l.dir(), f.Name()))
 			if err != nil {
 				return err
@@ -389,7 +389,7 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 
 // max returns the maximum size in bytes of log files before rotating.
 func (l *Logger) max() int64 {
-	return int64(l.MaxLogSizeMB) * int64(megabyte)
+	return int64(l.MaxLogSizeMB) * int64(MB)
 }
 
 // dir returns the directory for the current filename.
