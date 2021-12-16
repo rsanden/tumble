@@ -286,7 +286,7 @@ func TestRotate(t *testing.T) {
 
 	newFakeTime()
 
-	err = l.Rotate()
+	err = l.rotate()
 	isNil(err, t)
 
 	<-time.After(sleepTime)
@@ -305,7 +305,7 @@ func TestRotate(t *testing.T) {
 	fileCount(dir, 2, t)
 	newFakeTime()
 
-	err = l.Rotate()
+	err = l.rotate()
 	isNil(err, t)
 
 	<-time.After(sleepTime)
@@ -373,7 +373,7 @@ func TestCompressOnRotate(t *testing.T) {
 
 	newFakeTime()
 
-	err = l.Rotate()
+	err = l.rotate()
 	isNil(err, t)
 
 	<-time.After(sleepTime)

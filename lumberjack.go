@@ -187,17 +187,6 @@ func (l *Logger) close() error {
 	return err
 }
 
-// Rotate causes Logger to close the existing log file and immediately create a
-// new one.  This is a helper function for applications that want to initiate
-// rotations outside of the normal rotation rules, such as in response to
-// SIGHUP.  After rotating, this initiates compression and removal of old log
-// files according to the configuration.
-func (l *Logger) Rotate() error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.rotate()
-}
-
 // rotate closes the current file, moves it aside with a timestamp in the name,
 // (if it exists), opens a new file with the original filename, and then runs
 // post-rotation processing and removal.
