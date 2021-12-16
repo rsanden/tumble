@@ -19,7 +19,7 @@ func TestNewFile(t *testing.T) {
 	dir := makeTempDir("TestNewFile", t)
 	defer os.RemoveAll(dir)
 	l := &Logger{
-		Filename:       logFile(dir),
+		Filepath:       logFile(dir),
 		MaxLogSizeMB:   100,
 		MaxTotalSizeMB: 150,
 	}
@@ -46,7 +46,7 @@ func TestOpenExisting(t *testing.T) {
 	existsWithContent(filename, data, t)
 
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   100,
 		MaxTotalSizeMB: 150,
 	}
@@ -71,7 +71,7 @@ func TestFirstWriteRotate(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   6,
 		MaxTotalSizeMB: 50,
 	}
@@ -142,7 +142,7 @@ func TestCleanupExistingBackups(t *testing.T) {
 	err = ioutil.WriteFile(filename, data, fileMode)
 	isNil(err, t)
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   10,
 		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
 	}
@@ -191,7 +191,7 @@ func TestOldLogFiles(t *testing.T) {
 	err = ioutil.WriteFile(backup2, data, 07)
 	isNil(err, t)
 
-	l := &Logger{Filename: filename}
+	l := &Logger{Filepath: filename}
 	files, err := l.oldLogFiles()
 	isNil(err, t)
 	equals(2, len(files), t)
@@ -204,7 +204,7 @@ func TestOldLogFiles(t *testing.T) {
 }
 
 func TestTimeFromName(t *testing.T) {
-	l := &Logger{Filename: "/var/log/myfoo/foo.log"}
+	l := &Logger{Filepath: "/var/log/myfoo/foo.log"}
 	prefix, ext := l.prefixAndExt()
 
 	tests := []struct {
@@ -237,7 +237,7 @@ func TestRotate(t *testing.T) {
 	filename := logFile(dir)
 
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   12,
 		MaxTotalSizeMB: 77, /* gz files are between 23 and 29 bytes */
 	}
@@ -324,7 +324,7 @@ func TestCompressOnRotate(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   10,
 		MaxTotalSizeMB: 50,
 	}
@@ -372,7 +372,7 @@ func TestCompressOnResume(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		Filename:       filename,
+		Filepath:       filename,
 		MaxLogSizeMB:   6,
 		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
 	}

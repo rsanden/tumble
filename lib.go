@@ -24,7 +24,7 @@ import (
 //
 //     log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 //     log.SetOutput(&Logger{
-//         Filename:       "/path/to/foo.log",
+//         Filepath:       "/path/to/foo.log",
 //         MaxLogSizeMB:   100,
 //         MaxTotalSizeMB: 500,
 //     })
@@ -40,7 +40,7 @@ import (
 //         return buf, 26                         // alternatively, len(now)+len(" : ")
 //     }
 //     log.SetOutput(&Logger{
-//         Filename:       "/path/to/foo.log",
+//         Filepath:       "/path/to/foo.log",
 //         MaxLogSizeMB:   100,
 //         MaxTotalSizeMB: 500,
 //         FormatFn:       formatFn,
@@ -50,7 +50,7 @@ import (
 //       during rotation by the amount of MaxLogSizeMB.
 //
 type Logger struct {
-	Filename       string
+	Filepath       string
 	MaxLogSizeMB   uint
 	MaxTotalSizeMB uint
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)

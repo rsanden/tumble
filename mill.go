@@ -83,11 +83,11 @@ func compressLogFile(src string) (err error) {
 }
 
 func (l *Logger) dir() string {
-	return filepath.Dir(l.Filename)
+	return filepath.Dir(l.Filepath)
 }
 
 func (l *Logger) prefixAndExt() (prefix, ext string) {
-	filename := filepath.Base(l.Filename)
+	filename := filepath.Base(l.Filepath)
 	ext = filepath.Ext(filename)
 	prefix = filename[:len(filename)-len(ext)] + "-"
 	return prefix, ext

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 )
 
-func backupName(name string) string {
-	dir := filepath.Dir(name)
-	filename := filepath.Base(name)
+func backupName(fpath string) string {
+	dir := filepath.Dir(fpath)
+	filename := filepath.Base(fpath)
 	ext := filepath.Ext(filename)
 	prefix := filename[:len(filename)-len(ext)]
 	t := nowFn().UTC()
@@ -16,7 +16,7 @@ func backupName(name string) string {
 }
 
 func (l *Logger) openNew() error {
-	name := l.Filename
+	name := l.Filepath
 	_, err := os.Stat(name)
 	if err == nil {
 		newname := backupName(name)
@@ -40,8 +40,8 @@ func (l *Logger) openNew() error {
 func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
-	filename := l.Filename
-	info, err := os.Stat(filename)
+	fpath := l.Filepath
+	info, err := os.Stat(fpath)
 	if os.IsNotExist(err) {
 		return l.openNew()
 	}
@@ -53,7 +53,7 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 		return l.rotate()
 	}
 
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, fileMode)
+	file, err := os.OpenFile(fpath, os.O_APPEND|os.O_WRONLY, fileMode)
 	if err != nil {
 		// if we fail to open the old log file for some reason, just ignore
 		// it and open a new log file.
