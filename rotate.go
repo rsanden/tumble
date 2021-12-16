@@ -15,8 +15,8 @@ func backupName(fpath string) string {
 	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", prefix, t.Unix(), ext))
 }
 
-func (l *Logger) openNew() error {
-	name := l.Filepath
+func (me *Logger) openNew() error {
+	name := me.Filepath
 	_, err := os.Stat(name)
 	if err == nil {
 		newname := backupName(name)
@@ -32,45 +32,45 @@ func (l *Logger) openNew() error {
 	if err != nil {
 		return fmt.Errorf("can't open new logfile: %s", err)
 	}
-	l.file = f
-	l.size = 0
+	me.file = f
+	me.size = 0
 	return nil
 }
 
-func (l *Logger) openExistingOrNew(writeLen int) error {
-	l.mill()
+func (me *Logger) openExistingOrNew(writeLen int) error {
+	me.mill()
 
-	fpath := l.Filepath
+	fpath := me.Filepath
 	info, err := os.Stat(fpath)
 	if os.IsNotExist(err) {
-		return l.openNew()
+		return me.openNew()
 	}
 	if err != nil {
 		return fmt.Errorf("error getting log file info: %s", err)
 	}
 
-	if info.Size()+int64(writeLen) >= int64(l.MaxLogSizeMB*MB) {
-		return l.rotate()
+	if info.Size()+int64(writeLen) >= int64(me.MaxLogSizeMB*MB) {
+		return me.rotate()
 	}
 
 	file, err := os.OpenFile(fpath, os.O_APPEND|os.O_WRONLY, fileMode)
 	if err != nil {
 		// if we fail to open the old log file for some reason, just ignore
 		// it and open a new log file.
-		return l.openNew()
+		return me.openNew()
 	}
-	l.file = file
-	l.size = info.Size()
+	me.file = file
+	me.size = info.Size()
 	return nil
 }
 
-func (l *Logger) rotate() error {
-	if err := l.Close(); err != nil {
+func (me *Logger) rotate() error {
+	if err := me.Close(); err != nil {
 		return err
 	}
-	if err := l.openNew(); err != nil {
+	if err := me.openNew(); err != nil {
 		return err
 	}
-	l.mill()
+	me.mill()
 	return nil
 }

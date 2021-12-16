@@ -19,32 +19,32 @@ var (
 	MB    = uint(1024 * 1024)
 )
 
-func (l *Logger) Write(p []byte) (n int, err error) {
+func (me *Logger) Write(p []byte) (n int, err error) {
 	writeLen := int64(len(p))
 
-	if l.file == nil {
-		if err = l.openExistingOrNew(len(p)); err != nil {
+	if me.file == nil {
+		if err = me.openExistingOrNew(len(p)); err != nil {
 			return 0, err
 		}
-	} else if l.size+writeLen > int64(l.MaxLogSizeMB*MB) {
-		if err := l.rotate(); err != nil {
+	} else if me.size+writeLen > int64(me.MaxLogSizeMB*MB) {
+		if err := me.rotate(); err != nil {
 			return 0, err
 		}
 	}
 
 	var msg []byte
 	var msgIdx int
-	if l.FormatFn != nil {
-		l.fmtbuf = l.fmtbuf[:0]
-		l.fmtbuf, msgIdx = l.FormatFn(p, l.fmtbuf)
-		msg = l.fmtbuf
+	if me.FormatFn != nil {
+		me.fmtbuf = me.fmtbuf[:0]
+		me.fmtbuf, msgIdx = me.FormatFn(p, me.fmtbuf)
+		msg = me.fmtbuf
 	} else {
 		msg = p
 	}
 
-	n, err = l.file.Write(msg)
-	l.size += int64(n)
-	if l.FormatFn != nil {
+	n, err = me.file.Write(msg)
+	me.size += int64(n)
+	if me.FormatFn != nil {
 		// Return length of p consumed
 		if n < msgIdx {
 			return 0, err
@@ -57,11 +57,11 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (l *Logger) Close() error {
-	if l.file == nil {
+func (me *Logger) Close() error {
+	if me.file == nil {
 		return nil
 	}
-	err := l.file.Close()
-	l.file = nil
+	err := me.file.Close()
+	me.file = nil
 	return err
 }

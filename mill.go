@@ -82,18 +82,18 @@ func compressLogFile(src string) (err error) {
 	return nil
 }
 
-func (l *Logger) dir() string {
-	return filepath.Dir(l.Filepath)
+func (me *Logger) dir() string {
+	return filepath.Dir(me.Filepath)
 }
 
-func (l *Logger) prefixAndExt() (prefix, ext string) {
-	filename := filepath.Base(l.Filepath)
+func (me *Logger) prefixAndExt() (prefix, ext string) {
+	filename := filepath.Base(me.Filepath)
 	ext = filepath.Ext(filename)
 	prefix = filename[:len(filename)-len(ext)] + "-"
 	return prefix, ext
 }
 
-func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
+func (me *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 	if !strings.HasPrefix(filename, prefix) {
 		return time.Time{}, errors.New("mismatched prefix")
 	}
@@ -108,24 +108,24 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 	return time.Unix(secs, 0).UTC(), nil
 }
 
-func (l *Logger) oldLogFiles() ([]logInfo, error) {
-	files, err := ioutil.ReadDir(l.dir())
+func (me *Logger) oldLogFiles() ([]logInfo, error) {
+	files, err := ioutil.ReadDir(me.dir())
 	if err != nil {
 		return nil, fmt.Errorf("can't read log file directory: %s", err)
 	}
 	logFiles := []logInfo{}
 
-	prefix, ext := l.prefixAndExt()
+	prefix, ext := me.prefixAndExt()
 
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext); err == nil {
+		if t, err := me.timeFromName(f.Name(), prefix, ext); err == nil {
 			logFiles = append(logFiles, logInfo{f, t})
 			continue
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
+		if t, err := me.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
 			logFiles = append(logFiles, logInfo{f, t})
 			continue
 		}
@@ -138,8 +138,8 @@ func (l *Logger) oldLogFiles() ([]logInfo, error) {
 	return logFiles, nil
 }
 
-func (l *Logger) millRunOnce() error {
-	oldFiles, err := l.oldLogFiles()
+func (me *Logger) millRunOnce() error {
+	oldFiles, err := me.oldLogFiles()
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (l *Logger) millRunOnce() error {
 	}
 	for _, f := range oldFiles {
 		if !strings.HasSuffix(f.Name(), compressSuffix) {
-			fn := filepath.Join(l.dir(), f.Name())
+			fn := filepath.Join(me.dir(), f.Name())
 			err := compressLogFile(fn)
 			if err != nil {
 				return err
@@ -170,7 +170,7 @@ func (l *Logger) millRunOnce() error {
 
 	// Sort logInfo entries and discard the oldest once the maximum storage size has been exhausted.
 	// Note that we subtract the current log's maximum size, requiring compressed logs to fit
-	// within the remaining space (l.MaxTotalSizeMB - l.MaxLogSizeMB).
+	// within the remaining space (me.MaxTotalSizeMB - me.MaxLogSizeMB).
 	compressedFiles := make([]logInfo, 0, len(compressedMap))
 	for _, v := range compressedMap {
 		compressedFiles = append(compressedFiles, v)
@@ -180,8 +180,8 @@ func (l *Logger) millRunOnce() error {
 	totalSizeBytes := int64(0)
 	for _, f := range compressedFiles {
 		totalSizeBytes += f.Size()
-		if totalSizeBytes > int64((l.MaxTotalSizeMB-l.MaxLogSizeMB)*MB) {
-			err := os.Remove(filepath.Join(l.dir(), f.Name()))
+		if totalSizeBytes > int64((me.MaxTotalSizeMB-me.MaxLogSizeMB)*MB) {
+			err := os.Remove(filepath.Join(me.dir(), f.Name()))
 			if err != nil {
 				return err
 			}
@@ -191,31 +191,31 @@ func (l *Logger) millRunOnce() error {
 	return nil
 }
 
-func (l *Logger) millRun() {
+func (me *Logger) millRun() {
 	for {
-		<-l.millCh
+		<-me.millCh
 	outer:
 		for {
 			select {
-			case <-l.millCh:
+			case <-me.millCh:
 				continue
 			default:
 				break outer
 			}
 		}
-		if err := l.millRunOnce(); err != nil {
+		if err := me.millRunOnce(); err != nil {
 			fmt.Fprintln(os.Stderr, "error in tumble/millRunOnce:", err)
 		}
 	}
 }
 
-func (l *Logger) mill() {
-	l.startMill.Do(func() {
-		l.millCh = make(chan bool, 2)
-		go l.millRun()
+func (me *Logger) mill() {
+	me.startMill.Do(func() {
+		me.millCh = make(chan bool, 2)
+		go me.millRun()
 	})
 	select {
-	case l.millCh <- true:
+	case me.millCh <- true:
 	default:
 	}
 }
