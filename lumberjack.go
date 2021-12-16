@@ -172,13 +172,6 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 
 // Close implements io.Closer, and closes the current logfile.
 func (l *Logger) Close() error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.close()
-}
-
-// close closes the file if it is open.
-func (l *Logger) close() error {
 	if l.file == nil {
 		return nil
 	}
@@ -191,7 +184,7 @@ func (l *Logger) close() error {
 // (if it exists), opens a new file with the original filename, and then runs
 // post-rotation processing and removal.
 func (l *Logger) rotate() error {
-	if err := l.close(); err != nil {
+	if err := l.Close(); err != nil {
 		return err
 	}
 	if err := l.openNew(); err != nil {
