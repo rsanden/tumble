@@ -19,9 +19,6 @@ var (
 	MB    = uint(1024 * 1024)
 )
 
-// Write implements io.Writer. If a write would cause the log file to be larger
-// than MaxLogSizeMB, the file is closed, renamed to include a timestamp of the
-// current time, and a new log file is created using the original log file name.
 func (l *Logger) Write(p []byte) (n int, err error) {
 	writeLen := int64(len(p))
 
@@ -60,7 +57,6 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-// Close implements io.Closer, and closes the current logfile.
 func (l *Logger) Close() error {
 	if l.file == nil {
 		return nil

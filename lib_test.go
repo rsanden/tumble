@@ -13,17 +13,13 @@ import (
 
 // Note: Tests must be run sequentially (go test -parallel 1)
 
-// We often need to allow time for any underway mill() processing to complete
 const sleepTime = 100 * time.Millisecond
 
-// Mock time to control time used in filenames.
 var fakeCurrentTime = time.Now().UTC()
 
 func fakeTime() time.Time {
 	return fakeCurrentTime
 }
-
-// Advance fakeCurrentTime by two days
 func newFakeTime() {
 	fakeCurrentTime = fakeCurrentTime.Add(time.Hour * 24 * 2)
 }

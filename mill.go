@@ -14,13 +14,11 @@ import (
 	"time"
 )
 
-// logInfo is a convenience struct to return the filename and its embedded timestamp.
 type logInfo struct {
 	os.FileInfo
 	timestamp time.Time
 }
 
-// byFormatTime sorts by newest time formatted in the name.
 type byFormatTime []logInfo
 
 func (b byFormatTime) Len() int {
@@ -33,8 +31,6 @@ func (b byFormatTime) Less(i, j int) bool {
 	return b[i].timestamp.After(b[j].timestamp)
 }
 
-// compressLogFile compresses the given log file, removing the
-// uncompressed log file if successful.
 func compressLogFile(src string) (err error) {
 	dst := src + compressSuffix
 
@@ -86,13 +82,10 @@ func compressLogFile(src string) (err error) {
 	return nil
 }
 
-// dir returns the directory for the current filename.
 func (l *Logger) dir() string {
 	return filepath.Dir(l.Filename)
 }
 
-// prefixAndExt returns the filename part and extension part from the Logger's
-// filename.
 func (l *Logger) prefixAndExt() (prefix, ext string) {
 	filename := filepath.Base(l.Filename)
 	ext = filepath.Ext(filename)
@@ -100,7 +93,6 @@ func (l *Logger) prefixAndExt() (prefix, ext string) {
 	return prefix, ext
 }
 
-// timeFromName extracts the formatted time from the filename
 func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 	if !strings.HasPrefix(filename, prefix) {
 		return time.Time{}, errors.New("mismatched prefix")
@@ -116,8 +108,6 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 	return time.Unix(secs, 0).UTC(), nil
 }
 
-// oldLogFiles returns the list of backup log files stored in the same
-// directory as the current log file, sorted by ModTime
 func (l *Logger) oldLogFiles() ([]logInfo, error) {
 	files, err := ioutil.ReadDir(l.dir())
 	if err != nil {
@@ -148,9 +138,6 @@ func (l *Logger) oldLogFiles() ([]logInfo, error) {
 	return logFiles, nil
 }
 
-// millRunOnce performs compression and removal of stale log files.
-// Log files are compressed if enabled via configuration and old log
-// files are removed
 func (l *Logger) millRunOnce() error {
 	oldFiles, err := l.oldLogFiles()
 	if err != nil {
@@ -204,8 +191,6 @@ func (l *Logger) millRunOnce() error {
 	return nil
 }
 
-// millRun runs in a goroutine to manage post-rotation compression and removal
-// of old log files. The nested loop structure drains the channel on each run.
 func (l *Logger) millRun() {
 	for {
 		<-l.millCh
@@ -224,8 +209,6 @@ func (l *Logger) millRun() {
 	}
 }
 
-// mill performs post-rotation compression and removal of stale log files,
-// starting the mill goroutine if necessary.
 func (l *Logger) mill() {
 	l.startMill.Do(func() {
 		l.millCh = make(chan bool, 2)

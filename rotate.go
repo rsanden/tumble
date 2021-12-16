@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 )
 
-// backupName creates a new filename from the given name, inserting a timestamp
-// between the filename and the extension
 func backupName(name string) string {
 	dir := filepath.Dir(name)
 	filename := filepath.Base(name)
@@ -17,13 +15,10 @@ func backupName(name string) string {
 	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", prefix, t.Unix(), ext))
 }
 
-// openNew opens a new log file for writing, moving any old log file out of the
-// way.  This methods assumes the file has already been closed.
 func (l *Logger) openNew() error {
 	name := l.Filename
 	_, err := os.Stat(name)
 	if err == nil {
-		// move the existing file
 		newname := backupName(name)
 		if err := os.Rename(name, newname); err != nil {
 			return fmt.Errorf("can't rename log file: %s", err)
@@ -42,9 +37,6 @@ func (l *Logger) openNew() error {
 	return nil
 }
 
-// openExistingOrNew opens the logfile if it exists and if the current write
-// would not put it over MaxLogSizeMB.  If there is no such file or the write would
-// put it over the MaxLogSizeMB, a new file is created.
 func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
@@ -72,9 +64,6 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 	return nil
 }
 
-// rotate closes the current file, moves it aside with a timestamp in the name,
-// (if it exists), opens a new file with the original filename, and then runs
-// post-rotation processing and removal.
 func (l *Logger) rotate() error {
 	if err := l.Close(); err != nil {
 		return err
