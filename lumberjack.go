@@ -74,17 +74,13 @@ var _ io.WriteCloser = (*Logger)(nil)
 // timestamp is the rotation time, which may differ from the last time
 // that file was written to.
 type Logger struct {
-	// Filename is the file to write logs to.  Backup log files will be retained
-	// in the same directory.  It uses <processname>-lumberjack.log in
-	// os.TempDir() if empty.
+	// Filename is the file to write logs to. Backup log files will be retained in the same directory.
 	Filename string
 
-	// MaxLogSizeMB is the maximum size in megabytes of the log file before it gets
-	// rotated.
+	// MaxLogSizeMB is the maximum size in megabytes of the log file before it gets rotated.
 	MaxLogSizeMB uint
 
-	// MaxTotalSizeMB is the maximum size in megabytes of all log files, including
-	// rotated and compressed ones.
+	// MaxTotalSizeMB is the maximum size in megabytes of all log files.
 	MaxTotalSizeMB uint
 
 	// FormatFn is a formatting function that processes input before it is written.
@@ -116,13 +112,9 @@ type Logger struct {
 }
 
 var (
-	// currentTime exists so it can be mocked out by tests.
+	// These constants are mocked out by tests
 	currentTime = time.Now
-
-	// megabyte is the conversion factor between MaxLogSizeMB and bytes.  It is a
-	// variable so tests can mock it out and not need to write megabytes of data
-	// to disk.
-	megabyte = uint(1024 * 1024)
+	megabyte    = uint(1024 * 1024)
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -277,7 +269,7 @@ func (l *Logger) millRunOnce() error {
 	for _, f := range oldFiles {
 		if !strings.HasSuffix(f.Name(), compressSuffix) {
 			fn := filepath.Join(l.dir(), f.Name())
-			err := compressLogFile(fn, fn+compressSuffix)
+			err := compressLogFile(fn)
 			if err != nil {
 				return err
 			}
@@ -395,7 +387,7 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 	return time.Unix(secs, 0).UTC(), nil
 }
 
-// max returns the maximum size in bytes of log files before rolling.
+// max returns the maximum size in bytes of log files before rotating.
 func (l *Logger) max() int64 {
 	return int64(l.MaxLogSizeMB) * int64(megabyte)
 }
@@ -416,7 +408,9 @@ func (l *Logger) prefixAndExt() (prefix, ext string) {
 
 // compressLogFile compresses the given log file, removing the
 // uncompressed log file if successful.
-func compressLogFile(src, dst string) (err error) {
+func compressLogFile(src string) (err error) {
+	dst := src + compressSuffix
+
 	f, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %v", err)
@@ -475,14 +469,12 @@ type logInfo struct {
 // byFormatTime sorts by newest time formatted in the name.
 type byFormatTime []logInfo
 
-func (b byFormatTime) Less(i, j int) bool {
-	return b[i].timestamp.After(b[j].timestamp)
+func (b byFormatTime) Len() int {
+	return len(b)
 }
-
 func (b byFormatTime) Swap(i, j int) {
 	b[i], b[j] = b[j], b[i]
 }
-
-func (b byFormatTime) Len() int {
-	return len(b)
+func (b byFormatTime) Less(i, j int) bool {
+	return b[i].timestamp.After(b[j].timestamp)
 }
