@@ -99,9 +99,6 @@ var (
 	// currentTime exists so it can be mocked out by tests.
 	currentTime = time.Now
 
-	// os_Stat exists so it can be mocked out by tests.
-	osStat = os.Stat
-
 	// megabyte is the conversion factor between MaxLogSizeMB and bytes.  It is a
 	// variable so tests can mock it out and not need to write megabytes of data
 	// to disk.
@@ -179,7 +176,7 @@ func (l *Logger) rotate() error {
 // way.  This methods assumes the file has already been closed.
 func (l *Logger) openNew() error {
 	name := l.filename()
-	_, err := osStat(name)
+	_, err := os.Stat(name)
 	if err == nil {
 		// move the existing file
 		newname := backupName(name)
@@ -218,7 +215,7 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
 	filename := l.filename()
-	info, err := osStat(filename)
+	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return l.openNew()
 	}
@@ -418,7 +415,7 @@ func compressLogFile(src, dst string) (err error) {
 	}
 	defer f.Close()
 
-	_, err = osStat(src)
+	_, err = os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
