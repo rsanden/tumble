@@ -315,7 +315,7 @@ func TestIntegrationContinuityText(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
-	stdin.Close()               //          This shouldn't be necessary. (logger.Close() should block)
+	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
 
 	err = cmd.Wait()
 	if err != nil {
@@ -470,7 +470,7 @@ func TestIntegrationContinuityBinary(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
-	stdin.Close()               //          This shouldn't be necessary. (logger.Close() should block)
+	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
 
 	err = cmd.Wait()
 	if err != nil {
@@ -513,4 +513,87 @@ func TestIntegrationContinuityBinary(t *testing.T) {
 	}
 
 	teardown()
+}
+
+func TestIntegrationClose(t *testing.T) {
+	setup()
+
+	cmd := exec.Command(
+		"./tumble",
+		"--logfile", "tmp/foo.log",
+		"--max-log-size", "2",
+		"--max-total-size", "10",
+	)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write 1.95 MB -- no rotation yet
+	for i := 0; i < 127795; i++ {
+		msg := fmt.Sprintf("---%09d---\n", i)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	files, err := os.ReadDir("tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("Expected 1 file but instead found %d", len(files))
+	}
+	if files[0].Name() != "foo.log" {
+		t.Fatalf("Expected foo.log but instead found %s", files[0].Name())
+	}
+
+	// Allow any ongoing write to finish. Get ready for rotation.
+	time.Sleep(200 * time.Millisecond)
+
+	fi, err := os.Stat("tmp/foo.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Size() != 127795*16 {
+		t.Fatalf("Expected foo.log to have size 2044720 but instead found %d", fi.Size())
+	}
+
+	// Next, force a rotation+compression and then close immediately.
+	// The program should still complete the compression for exiting.
+	for i := 0; i < 6554; i++ {
+		msg := fmt.Sprintf("+++%09d+++\n", i)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
+	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
+
+	err = cmd.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Now there should two files only- one current log and one compressed backup
+	files, err = os.ReadDir("tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("Expected 2 files but instead found %d", len(files))
+	}
+	if !strings.HasSuffix(files[0].Name(), ".log.gz") {
+		t.Fatalf("Expected a compressed log but instead found %s", files[0].Name())
+	}
+	if files[1].Name() != "foo.log" {
+		t.Fatalf("Expected foo.log but instead found %s", files[1].Name())
+	}
 }
