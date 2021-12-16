@@ -204,7 +204,7 @@ func (l *Logger) millRun() {
 			}
 		}
 		if err := l.millRunOnce(); err != nil {
-			fmt.Fprintln(os.Stderr, "error in millRunOnce:", err)
+			fmt.Fprintln(os.Stderr, "error in tumble/millRunOnce:", err)
 		}
 	}
 }

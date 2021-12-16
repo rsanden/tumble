@@ -69,6 +69,6 @@ func main() {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "error reading stdin:", err)
+		fmt.Fprintln(os.Stderr, "error in tumble/main:", err)
 	}
 }
