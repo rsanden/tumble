@@ -314,8 +314,7 @@ func TestIntegrationContinuityText(t *testing.T) {
 		writeLineNumber += 1
 	}
 
-	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
-	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
+	stdin.Close()
 
 	err = cmd.Wait()
 	if err != nil {
@@ -469,8 +468,7 @@ func TestIntegrationContinuityBinary(t *testing.T) {
 		}
 	}
 
-	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
-	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
+	stdin.Close()
 
 	err = cmd.Wait()
 	if err != nil {
@@ -574,8 +572,7 @@ func TestIntegrationClose(t *testing.T) {
 		}
 	}
 
-	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
-	stdin.Close()               //          This sleep shouldn't be necessary. (logger.Close() should block)
+	stdin.Close()
 
 	err = cmd.Wait()
 	if err != nil {

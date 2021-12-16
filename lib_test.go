@@ -31,7 +31,7 @@ func TestNewFile(t *testing.T) {
 	existsWithContent(logFile(dir), b, t)
 	fileCount(dir, 1, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestOpenExisting(t *testing.T) {
@@ -60,7 +60,7 @@ func TestOpenExisting(t *testing.T) {
 
 	fileCount(dir, 1, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestFirstWriteRotate(t *testing.T) {
@@ -91,7 +91,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b), n, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	existsWithContent(filename, b, t)
 
@@ -105,7 +105,7 @@ func TestFirstWriteRotate(t *testing.T) {
 
 	fileCount(dir, 2, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestCleanupExistingBackups(t *testing.T) {
@@ -155,12 +155,12 @@ func TestCleanupExistingBackups(t *testing.T) {
 	isNil(err, t)
 	equals(len(b2), n, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	// now we should only have 2 files left - the primary and one backup
 	fileCount(dir, 2, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestOldLogFiles(t *testing.T) {
@@ -200,7 +200,7 @@ func TestOldLogFiles(t *testing.T) {
 	equals(t2, files[0].timestamp, t)
 	equals(t1, files[1].timestamp, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestTimeFromName(t *testing.T) {
@@ -224,7 +224,7 @@ func TestTimeFromName(t *testing.T) {
 		equals(err != nil, test.wantErr, t)
 	}
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestRotate(t *testing.T) {
@@ -255,7 +255,7 @@ func TestRotate(t *testing.T) {
 	err = l.rotate()
 	isNil(err, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	filename2 := backupFile(dir)
 
@@ -274,7 +274,7 @@ func TestRotate(t *testing.T) {
 	err = l.rotate()
 	isNil(err, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	filename3 := backupFile(dir)
 
@@ -295,7 +295,7 @@ func TestRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b2), n, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	fileCount(dir, 3, t)
 	newFakeTime()
@@ -305,14 +305,14 @@ func TestRotate(t *testing.T) {
 	isNil(err, t)
 	equals(len(b3), n, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	fileCount(dir, 3, t)
 
 	// this will use the new fake time
 	existsWithContent(filename, b3, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestCompressOnRotate(t *testing.T) {
@@ -342,7 +342,7 @@ func TestCompressOnRotate(t *testing.T) {
 	err = l.rotate()
 	isNil(err, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	// the old logfile should be moved aside and the main logfile should have nothing in it.
 	existsWithContent(filename, []byte{}, t)
@@ -360,7 +360,7 @@ func TestCompressOnRotate(t *testing.T) {
 
 	fileCount(dir, 2, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestCompressOnResume(t *testing.T) {
@@ -393,7 +393,7 @@ func TestCompressOnResume(t *testing.T) {
 	equals(len(b2), n, t)
 	existsWithContent(filename, b2, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 
 	// The write should have started the compression - a compressed version of
 	// the log file should now exist and the original should have been removed.
@@ -408,7 +408,7 @@ func TestCompressOnResume(t *testing.T) {
 
 	fileCount(dir, 2, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }
 
 func TestTimestampFormatFn(t *testing.T) {
@@ -445,5 +445,5 @@ func TestTimestampFormatFn(t *testing.T) {
 	expectedContent = append(expectedContent, b...)
 	existsWithContent(filename, expectedContent, t)
 
-	<-time.After(sleepTime)
+	time.Sleep(sleepTime)
 }

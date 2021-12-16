@@ -63,5 +63,14 @@ func (me *Logger) Close() error {
 	}
 	err := me.file.Close()
 	me.file = nil
+
+	// problem solved!
+	time.Sleep(500 * time.Millisecond)
+
+	// if me.millCh != nil {
+	//	close(me.millCh)
+	//	me.millCh = nil
+	// }
+
 	return err
 }
