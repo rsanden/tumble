@@ -1,6 +1,6 @@
 package tumble
 
-// Note: Tests must be run sequentially (go test -parallel 1)
+// Note: Run tests sequentially (go test -parallel 1)
 
 import (
 	"bytes"
