@@ -140,3 +140,92 @@ func TestIntegrationTimestamp(t *testing.T) {
 
 	cleanup()
 }
+
+func TestIntegrationTeeText(t *testing.T) {
+	setup()
+
+	textLines := []string{
+		"we",
+		"like",
+		"testing-",
+		"yes we do.",
+		"we",
+		"like",
+		"testing;",
+		"how about you?",
+	}
+	text := strings.Join(textLines, "\n") + "\n"
+
+	cmd := exec.Command(
+		"./tumble",
+		"--logfile", "tmp/foo.log",
+		"--max-log-size", "10",
+		"--max-total-size", "20",
+		"--tee-stdout",
+		"--tee-stderr",
+	)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdin = strings.NewReader(text)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileContent, err := ioutil.ReadFile("tmp/foo.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(fileContent) != text {
+		t.Fatalf("content %q != %q", string(fileContent), text)
+	}
+	if stdout.String() != text {
+		t.Fatalf("stdout %q != %q", stdout.String(), text)
+	}
+	if stderr.String() != text {
+		t.Fatalf("stderr %q != %q", stderr.String(), text)
+	}
+
+	cleanup()
+}
+
+func TestIntegrationTeeBinary(t *testing.T) {
+	setup()
+
+	data := []byte{0x00, 0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33}
+
+	cmd := exec.Command(
+		"./tumble",
+		"--logfile", "tmp/foo.log",
+		"--max-log-size", "10",
+		"--max-total-size", "20",
+		"--binary",
+		"--tee-stdout",
+		"--tee-stderr",
+	)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdin = bytes.NewReader(data)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileContent, err := ioutil.ReadFile("tmp/foo.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Compare(fileContent, data) != 0 {
+		t.Fatalf("content %q != %q", fileContent, data)
+	}
+	if bytes.Compare(stdout.Bytes(), data) != 0 {
+		t.Fatalf("stdout %q != %q", stdout.Bytes(), data)
+	}
+	if bytes.Compare(stderr.Bytes(), data) != 0 {
+		t.Fatalf("stderr %q != %q", stderr.Bytes(), data)
+	}
+
+	cleanup()
+}
