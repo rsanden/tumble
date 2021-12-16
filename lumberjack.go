@@ -317,9 +317,8 @@ func (l *Logger) millRun() {
 				break outer
 			}
 		}
-		er := l.millRunOnce()
-		if er != nil {
-			fmt.Fprintln(os.Stderr, "error in millRunOnce:", er)
+		if err := l.millRunOnce(); err != nil {
+			fmt.Fprintln(os.Stderr, "error in millRunOnce:", err)
 		}
 	}
 }
@@ -380,8 +379,8 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 		return time.Time{}, errors.New("mismatched extension")
 	}
 	ts := filename[len(prefix) : len(filename)-len(ext)]
-	secs, er := strconv.ParseInt(ts, 10, 64)
-	if er != nil {
+	secs, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil {
 		return time.Time{}, errors.New("invalid timestamp")
 	}
 	return time.Unix(secs, 0).UTC(), nil
