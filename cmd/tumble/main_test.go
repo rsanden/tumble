@@ -4,6 +4,8 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,13 +14,13 @@ import (
 	"time"
 )
 
-func cleanup() {
+func setup() {
 	os.RemoveAll("tmp")
+	os.Mkdir("tmp", 0755)
 }
 
-func setup() {
-	cleanup()
-	os.Mkdir("tmp", 0755)
+func teardown() {
+	os.RemoveAll("tmp")
 }
 
 func TestIntegrationTextMode(t *testing.T) {
@@ -46,7 +48,7 @@ func TestIntegrationTextMode(t *testing.T) {
 		t.Fatalf("%q != %q", string(fileContent), text)
 	}
 
-	cleanup()
+	teardown()
 }
 
 func TestIntegrationBinaryMode(t *testing.T) {
@@ -75,7 +77,7 @@ func TestIntegrationBinaryMode(t *testing.T) {
 		t.Fatalf("%q != %q", fileContent, data)
 	}
 
-	cleanup()
+	teardown()
 }
 
 func TestIntegrationTimestamp(t *testing.T) {
@@ -138,7 +140,7 @@ func TestIntegrationTimestamp(t *testing.T) {
 		}
 	}
 
-	cleanup()
+	teardown()
 }
 
 func TestIntegrationTeeText(t *testing.T) {
@@ -187,7 +189,7 @@ func TestIntegrationTeeText(t *testing.T) {
 		t.Fatalf("stderr %q != %q", stderr.String(), text)
 	}
 
-	cleanup()
+	teardown()
 }
 
 func TestIntegrationTeeBinary(t *testing.T) {
@@ -227,5 +229,155 @@ func TestIntegrationTeeBinary(t *testing.T) {
 		t.Fatalf("stderr %q != %q", stderr.Bytes(), data)
 	}
 
-	cleanup()
+	teardown()
+}
+
+func TestIntegrationContinuityText(t *testing.T) {
+	setup()
+
+	cmd := exec.Command(
+		"./tumble",
+		"--logfile", "tmp/foo.log",
+		"--max-log-size", "1",
+		"--max-total-size", "10",
+	)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We must not rotate faster than once per second in order to avoid clobbering an existing archive.
+	// Each line will be 16 bytes long and every 65536 lines will be 1 MB (1024 * 1024 / 16).
+	// The following code takes this into consideration and sleeps 1 second where necessary.
+	writeLineNumber := 1
+
+	// Write 0.5 MB -- no rotation -- log 0.5 MB, wrote 0.5 MB -- (0 archives)
+	for i := 0; i < 32768; i++ {
+		msg := fmt.Sprintf("Line %010d\n", writeLineNumber)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLineNumber += 1
+	}
+
+	time.Sleep(1 * time.Second)
+
+	// Write 0.75 MB -- rotation -- log 0.25 MB, wrote 1.25 MB -- (1 archives)
+	for i := 0; i < 49152; i++ {
+		msg := fmt.Sprintf("Line %010d\n", writeLineNumber)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLineNumber += 1
+	}
+
+	time.Sleep(1 * time.Second)
+
+	// Write 1.0 MB -- rotation -- log 0.25 MB, wrote 2.25 MB -- (2 archives)
+	for i := 0; i < 65536; i++ {
+		msg := fmt.Sprintf("Line %010d\n", writeLineNumber)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLineNumber += 1
+	}
+
+	time.Sleep(1 * time.Second)
+
+	// Write 0.5 MB -- no rotation -- log 0.75 MB, wrote 2.75 MB -- (2 archives)
+	for i := 0; i < 32768; i++ {
+		msg := fmt.Sprintf("Line %010d\n", writeLineNumber)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLineNumber += 1
+	}
+
+	// Write 0.75 MB -- rotation -- log 0.5 MB, wrote 3.5 MB -- (3 archives)
+	for i := 0; i < 49152; i++ {
+		msg := fmt.Sprintf("Line %010d\n", writeLineNumber)
+		_, err = stdin.Write([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLineNumber += 1
+	}
+
+	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
+	stdin.Close()               //          This shouldn't be necessary. (logger.Close() should block)
+
+	err = cmd.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the resulting files. (They will be processed in sorted order automatically.)
+	files, err := os.ReadDir("tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	numEmpty := 0
+	readLineNumber := 1
+	for _, f := range files {
+		var content string
+		if strings.HasSuffix(f.Name(), ".gz") {
+			gzFile, err := os.Open("tmp/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer gzFile.Close()
+			gzreader, err := gzip.NewReader(gzFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, err := ioutil.ReadAll(gzreader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			content = string(output)
+		} else {
+			output, err := ioutil.ReadFile("tmp/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			content = string(output)
+		}
+		for _, line := range strings.Split(content, "\n") {
+			if line == "" {
+				numEmpty += 1
+				continue
+			}
+			expected := fmt.Sprintf("Line %010d", readLineNumber)
+			if line != expected {
+				t.Fatalf("Expected [%s] but got [%s]", expected, line)
+			}
+			readLineNumber += 1
+		}
+	}
+
+	// We expect numEmpty to be 4 (one for each trailing \n in the file).
+	if numEmpty != 4 {
+		t.Fatalf("Expected numEmpty to be 4, but it was %d", numEmpty)
+	}
+
+	// Finally, we expect both writeLineNumber and readLineNumber to be
+	// (32768 + 49152 + 65536 + 32768 + 49152 + 1) = 229377
+	if writeLineNumber != 229377 {
+		t.Fatalf("Expected writeLineNumber to be 229377, but it was %d", writeLineNumber)
+	}
+	if readLineNumber != 229377 {
+		t.Fatalf("Expected readLineNumber to be 229377, but it was %d", readLineNumber)
+	}
+
+	teardown()
 }
