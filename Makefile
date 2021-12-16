@@ -1,6 +1,14 @@
 SHELL:=/bin/bash
 
-.PHONY: test
+.PHONY: all clean exe test
+
+all: exe
+
+clean:
+	cd cmd/tumble && make clean
+
+exe: clean
+	cd cmd/tumble && make exe
 
 test:
 	go test -parallel 1
