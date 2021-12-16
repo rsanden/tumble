@@ -1,28 +1,17 @@
 package tumble
 
+// Note: Tests must be run sequentially (go test -parallel 1)
+
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
 
-// Note: Tests must be run sequentially (go test -parallel 1)
-
 const sleepTime = 100 * time.Millisecond
-
-var fakeCurrentTime = time.Now().UTC()
-
-func fakeTime() time.Time {
-	return fakeCurrentTime
-}
-func newFakeTime() {
-	fakeCurrentTime = fakeCurrentTime.Add(time.Hour * 24 * 2)
-}
 
 func TestNewFile(t *testing.T) {
 	nowFn = fakeTime
@@ -420,51 +409,4 @@ func TestCompressOnResume(t *testing.T) {
 	fileCount(dir, 2, t)
 
 	<-time.After(sleepTime)
-}
-
-// makeTempDir creates a file with a semi-unique name in the OS temp directory.
-// It is based on the test name and must be cleaned up after the test is finished.
-func makeTempDir(name string, t testing.TB) string {
-	dir := fmt.Sprintf("%s-%d", name, time.Now().UTC().UnixNano())
-	dir = filepath.Join(os.TempDir(), dir)
-	isNilUp(os.Mkdir(dir, 0700), t, 1)
-	return dir
-}
-
-// existsWithContent checks that the given file exists and has the correct content.
-func existsWithContent(path string, content []byte, t testing.TB) {
-	info, err := os.Stat(path)
-	isNilUp(err, t, 1)
-	equalsUp(int64(len(content)), info.Size(), t, 1)
-
-	b, err := ioutil.ReadFile(path)
-	isNilUp(err, t, 1)
-	equalsUp(content, b, t, 1)
-}
-
-// logFile returns the log file name in the given directory for the current fake time.
-func logFile(dir string) string {
-	return filepath.Join(dir, "foobar.log")
-}
-
-func backupFile(dir string) string {
-	fname := fmt.Sprintf("foobar-%d.log", fakeTime().Unix())
-	return filepath.Join(dir, fname)
-}
-
-// fileCount checks that the number of files in the directory is exp.
-func fileCount(dir string, exp int, t testing.TB) {
-	files, err := ioutil.ReadDir(dir)
-	isNilUp(err, t, 1)
-	equalsUp(exp, len(files), t, 1) // Make sure no other files were created.
-}
-
-func notExist(path string, t testing.TB) {
-	_, err := os.Stat(path)
-	assertUp(os.IsNotExist(err), t, 1, "expected to get os.IsNotExist, but instead got %v", err)
-}
-
-func exists(path string, t testing.TB) {
-	_, err := os.Stat(path)
-	assertUp(err == nil, t, 1, "expected file to exist, but got error from os.Stat: %v", err)
 }
