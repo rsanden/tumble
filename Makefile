@@ -12,3 +12,4 @@ exe: clean
 
 test:
 	go test -parallel 1
+	cd cmd/tumble && make test
