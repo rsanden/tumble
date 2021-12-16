@@ -11,26 +11,21 @@ import (
 	"time"
 )
 
+// Note: Tests must be run sequentially (go test -parallel 1)
+
+// We often need to allow time for any underway mill() processing to complete
 const sleepTime = 100 * time.Millisecond
 
-// !!!NOTE!!!
-//
-// Running these tests in parallel will almost certainly cause sporadic (or even
-// regular) failures, because they're all messing with the same global variable
-// that controls the logic's mocked time.Now.  So... don't do that.
-//
-// Run tests sequentially using:
-//
-//     go test -p 1
-//
-
-// Since all the tests uses the time to determine filenames etc, we need to
-// control the wall clock as much as possible, which means having a wall clock
-// that doesn't change unless we want it to.
+// Mock time to control time used in filenames.
 var fakeCurrentTime = time.Now().UTC()
 
 func fakeTime() time.Time {
 	return fakeCurrentTime
+}
+
+// Advance fakeCurrentTime by two days
+func newFakeTime() {
+	fakeCurrentTime = fakeCurrentTime.Add(time.Hour * 24 * 2)
 }
 
 func TestNewFile(t *testing.T) {
@@ -51,7 +46,6 @@ func TestNewFile(t *testing.T) {
 	existsWithContent(logFile(dir), b, t)
 	fileCount(dir, 1, t)
 
-	// Allow time for any underway mill() processing to complete
 	<-time.After(sleepTime)
 }
 
@@ -77,10 +71,8 @@ func TestOpenExisting(t *testing.T) {
 	isNil(err, t)
 	equals(len(b), n, t)
 
-	// make sure the file got appended
 	existsWithContent(filename, append(data, b...), t)
 
-	// make sure no other files were created
 	fileCount(dir, 1, t)
 
 	<-time.After(sleepTime)
@@ -100,6 +92,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	}
 	defer l.Close()
 
+	// this won't rotate
 	start := []byte("data")
 	err := ioutil.WriteFile(filename, start, fileMode)
 	isNil(err, t)
@@ -107,7 +100,7 @@ func TestFirstWriteRotate(t *testing.T) {
 
 	newFakeTime()
 
-	// this would make us rotate
+	// this would rotate
 	b := []byte("foooooo!")
 	n, err := l.Write(b)
 	isNil(err, t)
@@ -366,12 +359,10 @@ func TestCompressOnRotate(t *testing.T) {
 
 	<-time.After(sleepTime)
 
-	// the old logfile should be moved aside and the main logfile should have
-	// nothing in it.
+	// the old logfile should be moved aside and the main logfile should have nothing in it.
 	existsWithContent(filename, []byte{}, t)
 
-	// a compressed version of the log file should now exist and the original
-	// should have been removed.
+	// a compressed version of the log file should now exist and the original should have been removed.
 	bc := new(bytes.Buffer)
 	gz := gzip.NewWriter(bc)
 	_, err = gz.Write(b)
@@ -436,8 +427,7 @@ func TestCompressOnResume(t *testing.T) {
 }
 
 // makeTempDir creates a file with a semi-unique name in the OS temp directory.
-// It should be based on the name of the test, to keep parallel tests from
-// colliding, and must be cleaned up after the test is finished.
+// It is based on the test name and must be cleaned up after the test is finished.
 func makeTempDir(name string, t testing.TB) string {
 	dir := fmt.Sprintf("%s-%d", name, time.Now().UTC().UnixNano())
 	dir = filepath.Join(os.TempDir(), dir)
@@ -456,8 +446,7 @@ func existsWithContent(path string, content []byte, t testing.TB) {
 	equalsUp(content, b, t, 1)
 }
 
-// logFile returns the log file name in the given directory for the current fake
-// time.
+// logFile returns the log file name in the given directory for the current fake time.
 func logFile(dir string) string {
 	return filepath.Join(dir, "foobar.log")
 }
@@ -471,13 +460,7 @@ func backupFile(dir string) string {
 func fileCount(dir string, exp int, t testing.TB) {
 	files, err := ioutil.ReadDir(dir)
 	isNilUp(err, t, 1)
-	// Make sure no other files were created.
-	equalsUp(exp, len(files), t, 1)
-}
-
-// newFakeTime sets the fake "current time" to two days later.
-func newFakeTime() {
-	fakeCurrentTime = fakeCurrentTime.Add(time.Hour * 24 * 2)
+	equalsUp(exp, len(files), t, 1) // Make sure no other files were created.
 }
 
 func notExist(path string, t testing.TB) {
