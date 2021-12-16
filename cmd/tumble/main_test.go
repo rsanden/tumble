@@ -5,7 +5,9 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -251,8 +253,8 @@ func TestIntegrationContinuityText(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// We must not rotate faster than once per second in order to avoid clobbering an existing archive.
 	// Each line will be 16 bytes long and every 65536 lines will be 1 MB (1024 * 1024 / 16).
+	// We must not rotate faster than once per second in order to avoid clobbering an existing archive.
 	// The following code takes this into consideration and sleeps 1 second where necessary.
 	writeLineNumber := 1
 
@@ -377,6 +379,137 @@ func TestIntegrationContinuityText(t *testing.T) {
 	}
 	if readLineNumber != 229377 {
 		t.Fatalf("Expected readLineNumber to be 229377, but it was %d", readLineNumber)
+	}
+
+	teardown()
+}
+
+func TestIntegrationContinuityBinary(t *testing.T) {
+	setup()
+
+	cmd := exec.Command(
+		"./tumble",
+		"--logfile", "tmp/foo.log",
+		"--max-log-size", "1",
+		"--max-total-size", "10",
+		"--binary",
+	)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Produce a giant block of binary data. It will get written in chunks, rotated,
+	// and later read back in and compared to ensure nothing was broken by the rotation boundaries.
+	var dataBuf bytes.Buffer
+	for i := 0; i < 1592603; i++ {
+		if i%3 == 0 {
+			continue
+		}
+		err := binary.Write(&dataBuf, binary.LittleEndian, uint32(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	data := dataBuf.Bytes()
+
+	// Each line will be 19 bytes long and we will rotate after 55189 lines.
+	// It is intentional that these chunks do not fit perfectly inside of the read buffer.
+	// We must not rotate faster than once per second in order to avoid clobbering an existing archive.
+	// The following code takes this into consideration and sleeps 1 second where necessary.
+
+	count := 0
+	chunk := make([]byte, 19)
+	checkpoints := make([]bool, 5)
+	for {
+		n, err := dataBuf.Read(chunk)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		n, err = stdin.Write(chunk[:n])
+		if err != nil {
+			t.Fatal(err)
+		}
+		count += n
+		if count == 524286 {
+			checkpoints[0] = true
+			time.Sleep(1 * time.Second)
+		}
+		if count == 524286+786429 {
+			checkpoints[1] = true
+			time.Sleep(1 * time.Second)
+		}
+		if count == 524286+786429+1048572 {
+			checkpoints[2] = true
+			time.Sleep(1 * time.Second)
+		}
+		if count == 524286+786429+1048572+524286 {
+			checkpoints[3] = true
+			time.Sleep(1 * time.Second)
+		}
+		if count == 524286+786429+1048572+524286+786429 {
+			checkpoints[4] = true
+			time.Sleep(1 * time.Second)
+		}
+		if count == 524286+786429+1048572+524286+786429+786429 {
+			panic("unreachable")
+		}
+	}
+	for i, checkpoint := range checkpoints {
+		if !checkpoint {
+			t.Fatalf("Checkpoint %d was never reached", i)
+		}
+	}
+
+	time.Sleep(1 * time.Second) // FIXME -- Allow some time for any compression to finish.
+	stdin.Close()               //          This shouldn't be necessary. (logger.Close() should block)
+
+	err = cmd.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the resulting files. (They will be processed in sorted order automatically.)
+	files, err := os.ReadDir("tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var fileContent []byte
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".gz") {
+			gzFile, err := os.Open("tmp/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer gzFile.Close()
+			gzreader, err := gzip.NewReader(gzFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, err := ioutil.ReadAll(gzreader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fileContent = append(fileContent, output...)
+		} else {
+			output, err := ioutil.ReadFile("tmp/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			fileContent = append(fileContent, output...)
+		}
+	}
+	if bytes.Compare(fileContent, data) != 0 {
+		t.Fatal("fileContent mismatch")
 	}
 
 	teardown()
