@@ -24,7 +24,7 @@ Default formatting example:
 
 ```go
 log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-log.SetOutput(tumble.Logger{
+log.SetOutput(&tumble.Logger{
     Filepath:       "/path/to/foo.log",
     MaxLogSizeMB:   100,
     MaxTotalSizeMB: 500,
@@ -42,7 +42,7 @@ formatFn := func(msg []byte, buf []byte) ([]byte, int) {
     buf = append(buf, msg...)              // Therefore, this starts at index 26
     return buf, 26                         // alternatively, len(now)+len(" : ")
 }
-log.SetOutput(tumble.Logger{
+log.SetOutput(&tumble.Logger{
     Filepath:       "/path/to/foo.log",
     MaxLogSizeMB:   100,
     MaxTotalSizeMB: 500,
