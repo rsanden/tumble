@@ -110,7 +110,6 @@ type Logger struct {
 
 	size int64
 	file *os.File
-	mu   sync.Mutex
 
 	millCh    chan bool
 	startMill sync.Once
@@ -130,9 +129,6 @@ var (
 // than MaxLogSizeMB, the file is closed, renamed to include a timestamp of the
 // current time, and a new log file is created using the original log file name.
 func (l *Logger) Write(p []byte) (n int, err error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	writeLen := int64(len(p))
 
 	if l.file == nil {
