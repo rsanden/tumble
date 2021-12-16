@@ -32,7 +32,7 @@ import (
 // Custom Formatting example:
 //
 //     log.SetFlags(0)
-//     formatFn = func(msg []byte, buf []byte) ([]byte, int) {
+//     formatFn := func(msg []byte, buf []byte) ([]byte, int) {
 //         now := time.Now().UTC().Format("2006-01-02 15:04:05.000")
 //         buf = append(buf, []byte(now)...)      // This always has length 23
 //         buf = append(buf, []byte(" : ")...)    // This always has length 3

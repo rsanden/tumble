@@ -410,3 +410,40 @@ func TestCompressOnResume(t *testing.T) {
 
 	<-time.After(sleepTime)
 }
+
+func TestTimestampFormatFn(t *testing.T) {
+	dir := makeTempDir("TestTimestampFormatFn", t)
+	defer os.RemoveAll(dir)
+
+	timeFormat := "2006-01-02 15:04:05.000"
+	formatFn := func(msg []byte, buf []byte) ([]byte, int) {
+		now := fakeTime().Format(timeFormat)
+		buf = append(buf, []byte(now)...)
+		buf = append(buf, []byte(" : ")...)
+		buf = append(buf, msg...)
+		return buf, len(now) + len(" : ")
+	}
+
+	filename := logFile(dir)
+	l := &Logger{
+		Filepath:       filename,
+		MaxLogSizeMB:   100,
+		MaxTotalSizeMB: 150,
+		FormatFn:       formatFn,
+	}
+	defer l.Close()
+
+	b := []byte("boo!")
+	n, err := l.Write(b)
+	isNil(err, t)
+	equals(len(b), n, t)
+
+	var expectedContent []byte
+	fakeTimestamp := fakeTime().Format(timeFormat)
+	expectedContent = append(expectedContent, []byte(fakeTimestamp)...)
+	expectedContent = append(expectedContent, []byte(" : ")...)
+	expectedContent = append(expectedContent, b...)
+	existsWithContent(filename, expectedContent, t)
+
+	<-time.After(sleepTime)
+}
