@@ -1,25 +1,4 @@
-// Package lumberjack provides a rolling logger.
-//
-// Note that this is v2.0 of lumberjack, and should be imported using gopkg.in
-// thusly:
-//
-//   import "gopkg.in/natefinch/lumberjack.v2"
-//
-// The package name remains simply lumberjack, and the code resides at
-// https://github.com/natefinch/lumberjack under the v2.0 branch.
-//
-// Lumberjack is intended to be one part of a logging infrastructure.
-// It is not an all-in-one solution, but instead is a pluggable
-// component at the bottom of the logging stack that simply controls the files
-// to which logs are written.
-//
-// Lumberjack plays well with any logging package that can write to an
-// io.Writer, including the standard library's log package.
-//
-// Lumberjack assumes that only one process is writing to the output files.
-// Using the same lumberjack configuration from multiple processes on the same
-// machine will result in improper behavior.
-package lumberjack
+package tumble
 
 import (
 	"compress/gzip"
@@ -41,38 +20,9 @@ const (
 	fileMode       = 0644
 )
 
-// ensure we always implement io.WriteCloser
+// Ensure we always implement io.WriteCloser
 var _ io.WriteCloser = (*Logger)(nil)
 
-// Logger is an io.WriteCloser that writes to the specified filename.
-//
-// Logger opens or creates the logfile on first Write.  If the file exists and
-// is less than MaxLogSizeMB megabytes, lumberjack will open and append to that file.
-// If the file exists and its size is >= MaxLogSizeMB megabytes, the file is renamed
-// by putting the current time in a timestamp in the name immediately before the
-// file's extension (or the end of the filename if there's no extension). A new
-// log file is then created using original filename.
-//
-// Whenever a write would cause the current log file exceed MaxLogSizeMB megabytes,
-// the current file is closed, renamed, and a new log file created with the
-// original name. Thus, the filename you give Logger is always the "current" log
-// file.
-//
-// Backups use the log file name given to Logger, in the form
-// `name-timestamp.ext` where name is the filename without the extension,
-// timestamp is the time at which the log was rotated formatted with the
-// time.Time format of `2006-01-02T15-04-05.000` and the extension is the
-// original extension.  For example, if your Logger.Filename is
-// `/var/log/foo/server.log`, a backup created at 6:30pm on Nov 11 2016 would
-// use the filename `/var/log/foo/server-2016-11-04T18-30-00.000.log`
-//
-// Cleaning Up Old Log Files
-//
-// Whenever a new logfile gets created, old log files may be deleted.  The most
-// recent files according to the encoded timestamp will be retained, up to a
-// maximum size determined by MaxTotalSizeMB. Note that the time encoded in the
-// timestamp is the rotation time, which may differ from the last time
-// that file was written to.
 type Logger struct {
 	// Filename is the file to write logs to. Backup log files will be retained in the same directory.
 	Filename string
@@ -104,9 +54,8 @@ type Logger struct {
 	FormatFn func(msg []byte, buf []byte) ([]byte, int)
 	fmtbuf   []byte
 
-	size int64
-	file *os.File
-
+	file      *os.File
+	size      int64
 	millCh    chan bool
 	startMill sync.Once
 }
@@ -361,7 +310,7 @@ func (l *Logger) oldLogFiles() ([]logInfo, error) {
 			continue
 		}
 		// error parsing means that the suffix at the end was not generated
-		// by lumberjack, and therefore it's not a backup file.
+		// by us, and therefore it's not a backup file.
 	}
 
 	sort.Sort(byFormatTime(logFiles))
