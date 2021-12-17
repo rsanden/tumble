@@ -31,7 +31,7 @@ func NewLogger(filepath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func
 		/* size:           */ 0,
 		/* millCh:         */ make(chan struct{}, 2),
 		/* millWG:         */ sync.WaitGroup{},
-		/* stopMillOnce:  */ sync.Once{},
+		/* stopMillOnce:   */ sync.Once{},
 		/* fmtbuf:         */ nil,
 	}
 

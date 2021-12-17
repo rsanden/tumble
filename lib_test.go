@@ -31,8 +31,6 @@ func TestNewFile(t *testing.T) {
 	equals(len(b), n, t)
 	existsWithContent(logFile(dir), b, t)
 	fileCount(dir, 1, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestOpenExisting(t *testing.T) {
@@ -61,8 +59,6 @@ func TestOpenExisting(t *testing.T) {
 	existsWithContent(filename, append(data, b...), t)
 
 	fileCount(dir, 1, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestFirstWriteRotate(t *testing.T) {
@@ -107,8 +103,6 @@ func TestFirstWriteRotate(t *testing.T) {
 	existsWithContent(backupFile(dir)+compressSuffix, bc.Bytes(), t)
 
 	fileCount(dir, 2, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestCleanupExistingBackups(t *testing.T) {
@@ -163,8 +157,6 @@ func TestCleanupExistingBackups(t *testing.T) {
 
 	// now we should only have 2 files left - the primary and one backup
 	fileCount(dir, 2, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestOldLogFiles(t *testing.T) {
@@ -203,8 +195,6 @@ func TestOldLogFiles(t *testing.T) {
 	// should be sorted by newest file first, which would be t2
 	equals(t2, files[0].timestamp, t)
 	equals(t1, files[1].timestamp, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestTimeFromName(t *testing.T) {
@@ -227,8 +217,6 @@ func TestTimeFromName(t *testing.T) {
 		equals(got, test.want, t)
 		equals(err != nil, test.wantErr, t)
 	}
-
-	time.Sleep(sleepTime)
 }
 
 func TestRotate(t *testing.T) {
@@ -316,8 +304,6 @@ func TestRotate(t *testing.T) {
 
 	// this will use the new fake time
 	existsWithContent(filename, b3, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestCompressOnRotate(t *testing.T) {
@@ -365,8 +351,6 @@ func TestCompressOnRotate(t *testing.T) {
 	notExist(backupFile(dir), t)
 
 	fileCount(dir, 2, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestCompressOnResume(t *testing.T) {
@@ -414,8 +398,6 @@ func TestCompressOnResume(t *testing.T) {
 	notExist(filename2, t)
 
 	fileCount(dir, 2, t)
-
-	time.Sleep(sleepTime)
 }
 
 func TestTimestampFormatFn(t *testing.T) {
@@ -451,6 +433,4 @@ func TestTimestampFormatFn(t *testing.T) {
 	expectedContent = append(expectedContent, []byte(" : ")...)
 	expectedContent = append(expectedContent, b...)
 	existsWithContent(filename, expectedContent, t)
-
-	time.Sleep(sleepTime)
 }
