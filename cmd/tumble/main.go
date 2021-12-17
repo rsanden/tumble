@@ -48,33 +48,37 @@ func init_globals() {
 	}
 }
 
-func runBinaryMode(logger *tumble.Logger) error {
-	bufSize := 32 * 1024
+func writeData(logger *tumble.Logger, buf []byte) error {
+	var ERR error
+	if _, err := logger.Write(buf); ERR == nil {
+		ERR = err
+	}
+	if isTeeStdout {
+		if _, err := os.Stdout.Write(buf); ERR == nil {
+			ERR = err
+		}
+	}
+	if isTeeStderr {
+		if _, err := os.Stderr.Write(buf); ERR == nil {
+			ERR = err
+		}
+	}
+	return ERR
+}
 
-	buf := make([]byte, bufSize)
+func runBinaryMode(logger *tumble.Logger) error {
+	buf := make([]byte, 32*1024)
 	for {
-		n, err := os.Stdin.Read(buf)
-		if err == io.EOF {
-			return nil
+		n, readErr := os.Stdin.Read(buf)
+		writeErr := writeData(logger, buf[:n])
+		if readErr == io.EOF {
+			return writeErr
 		}
-		if err != nil {
-			return err
+		if readErr != nil {
+			return readErr
 		}
-		_, err = logger.Write(buf[:n])
-		if err != nil {
-			return err
-		}
-		if isTeeStdout {
-			_, err = os.Stdout.Write(buf[:n])
-			if err != nil {
-				return err
-			}
-		}
-		if isTeeStderr {
-			_, err = os.Stderr.Write(buf[:n])
-			if err != nil {
-				return err
-			}
+		if writeErr != nil {
+			return writeErr
 		}
 	}
 }
@@ -83,22 +87,11 @@ func runTextMode(logger *tumble.Logger) error {
 	var line []byte
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		line = []byte(scanner.Text() + "\n")
-		_, err := logger.Write(line)
-		if err != nil {
+		line = line[:0]
+		line = append(line, scanner.Bytes()...)
+		line = append(line, '\n')
+		if err := writeData(logger, line); err != nil {
 			return err
-		}
-		if isTeeStdout {
-			_, err = os.Stdout.Write(line)
-			if err != nil {
-				return err
-			}
-		}
-		if isTeeStderr {
-			_, err = os.Stderr.Write(line)
-			if err != nil {
-				return err
-			}
 		}
 	}
 	return scanner.Err()
@@ -107,12 +100,12 @@ func runTextMode(logger *tumble.Logger) error {
 func main() {
 	init_globals()
 
-	logger := &tumble.Logger{
-		Filepath:       logfile,
-		MaxLogSizeMB:   maxLogSize,
-		MaxTotalSizeMB: maxTotalSize,
-		FormatFn:       formatFn,
-	}
+	logger := tumble.NewLogger(
+		/* Filepath:       */ logfile,
+		/* MaxLogSizeMB:   */ maxLogSize,
+		/* MaxTotalSizeMB: */ maxTotalSize,
+		/* FormatFn:       */ formatFn,
+	)
 	defer logger.Close()
 
 	var runFn func(logger *tumble.Logger) error

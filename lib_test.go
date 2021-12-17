@@ -18,11 +18,12 @@ func TestNewFile(t *testing.T) {
 
 	dir := makeTempDir("TestNewFile", t)
 	defer os.RemoveAll(dir)
-	l := &Logger{
-		Filepath:       logFile(dir),
-		MaxLogSizeMB:   100,
-		MaxTotalSizeMB: 150,
-	}
+	l := NewLogger(
+		/* Filepath:       */ logFile(dir),
+		/* MaxLogSizeMB:   */ 100,
+		/* MaxTotalSizeMB: */ 150,
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 	b := []byte("boo!")
 	n, err := l.Write(b)
@@ -45,11 +46,12 @@ func TestOpenExisting(t *testing.T) {
 	isNil(err, t)
 	existsWithContent(filename, data, t)
 
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   100,
-		MaxTotalSizeMB: 150,
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 100,
+		/* MaxTotalSizeMB: */ 150,
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 	b := []byte("boo!")
 	n, err := l.Write(b)
@@ -70,11 +72,12 @@ func TestFirstWriteRotate(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   6,
-		MaxTotalSizeMB: 50,
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 6,
+		/* MaxTotalSizeMB: */ 50,
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 
 	// this won't rotate
@@ -141,11 +144,12 @@ func TestCleanupExistingBackups(t *testing.T) {
 	filename := logFile(dir)
 	err = ioutil.WriteFile(filename, data, fileMode)
 	isNil(err, t)
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   10,
-		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 10,
+		/* MaxTotalSizeMB: */ 40, /* The first rotation will create a 28-byte gzipped file */
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 
 	newFakeTime()
@@ -236,11 +240,12 @@ func TestRotate(t *testing.T) {
 
 	filename := logFile(dir)
 
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   12,
-		MaxTotalSizeMB: 77, /* gz files are between 23 and 29 bytes */
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 12,
+		/* MaxTotalSizeMB: */ 77, /* gz files are between 23 and 29 bytes */
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 	b := []byte("data")
 	n, err := l.Write(b)
@@ -323,11 +328,12 @@ func TestCompressOnRotate(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   10,
-		MaxTotalSizeMB: 50,
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 10,
+		/* MaxTotalSizeMB: */ 50,
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 	b := []byte("boo!")
 	n, err := l.Write(b)
@@ -371,11 +377,12 @@ func TestCompressOnResume(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   6,
-		MaxTotalSizeMB: 40, /* The first rotation will create a 28-byte gzipped file */
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 6,
+		/* MaxTotalSizeMB: */ 40, /* The first rotation will create a 28-byte gzipped file */
+		/* FormatFn:       */ nil,
+	)
 	defer l.Close()
 
 	// Create a backup file and empty "compressed" file.
@@ -425,12 +432,12 @@ func TestTimestampFormatFn(t *testing.T) {
 	}
 
 	filename := logFile(dir)
-	l := &Logger{
-		Filepath:       filename,
-		MaxLogSizeMB:   100,
-		MaxTotalSizeMB: 150,
-		FormatFn:       formatFn,
-	}
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 100,
+		/* MaxTotalSizeMB: */ 150,
+		/* FormatFn:       */ formatFn,
+	)
 	defer l.Close()
 
 	b := []byte("boo!")

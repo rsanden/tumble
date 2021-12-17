@@ -579,7 +579,7 @@ func TestIntegrationClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Now there should two files only- one current log and one compressed backup
+	// Now there should be two files only- one current log and one compressed backup
 	files, err = os.ReadDir("tmp")
 	if err != nil {
 		t.Fatal(err)

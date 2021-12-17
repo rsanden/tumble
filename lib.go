@@ -23,28 +23,31 @@ import (
 // Default formatting example:
 //
 //     log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-//     log.SetOutput(&Logger{
-//         Filepath:       "/path/to/foo.log",
-//         MaxLogSizeMB:   100,
-//         MaxTotalSizeMB: 500,
-//     })
+//     log.SetOutput(tumble.NewLogger(
+//         /* Filepath:       */ "/path/to/foo.log",
+//         /* MaxLogSizeMB:   */ 100,
+//         /* MaxTotalSizeMB: */ 500,
+//         /* FormatFn:       */ nil,
+//     ))
+//     defer logger.Close()
 //
 // Custom Formatting example:
 //
 //     log.SetFlags(0)
 //     formatFn := func(msg []byte, buf []byte) ([]byte, int) {
 //         now := time.Now().UTC().Format("2006-01-02 15:04:05.000")
-//         buf = append(buf, []byte(now)...)      // This always has length 23
-//         buf = append(buf, []byte(" : ")...)    // This always has length 3
-//         buf = append(buf, msg...)              // Therefore, this starts at index 26
-//         return buf, 26                         // alternatively, len(now)+len(" : ")
+//         buf = append(buf, []byte(now)...)   // This always has length 23
+//         buf = append(buf, []byte(" : ")...) // This always has length 3
+//         buf = append(buf, msg...)           // Therefore, this starts at index 26
+//         return buf, 26                      // alternatively, len(now)+len(" : ")
 //     }
-//     log.SetOutput(&Logger{
-//         Filepath:       "/path/to/foo.log",
-//         MaxLogSizeMB:   100,
-//         MaxTotalSizeMB: 500,
-//         FormatFn:       formatFn,
-//     })
+//     log.SetOutput(tumble.NewLogger(
+//         /* Filepath:       */ "/path/to/foo.log",
+//         /* MaxLogSizeMB:   */ 100,
+//         /* MaxTotalSizeMB: */ 500,
+//         /* FormatFn:       */ formatFn,
+//     ))
+//     defer logger.Close()
 //
 // Note: maxTotalSizeMB is not precise. It may be temporarily exceeded
 //       during rotation by the amount of MaxLogSizeMB.
@@ -55,9 +58,10 @@ type Logger struct {
 	MaxTotalSizeMB uint
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)
 
-	file      *os.File
-	size      int64
-	millCh    chan bool
-	startMill sync.Once
-	fmtbuf    []byte
+	file         *os.File // Why not io.Writer?
+	size         int64
+	millCh       chan struct{}
+	millWG       sync.WaitGroup
+	stopMillOnce sync.Once
+	fmtbuf       []byte
 }

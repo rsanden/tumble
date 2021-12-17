@@ -2,6 +2,7 @@ package tumble
 
 import (
 	"io"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,27 @@ var (
 	nowFn = time.Now
 	MB    = uint(1024 * 1024)
 )
+
+func NewLogger(filepath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func(msg []byte, buf []byte) ([]byte, int)) *Logger {
+	logger := &Logger{
+		/* Filepath:       */ filepath,
+		/* MaxLogSizeMB:   */ maxLogSizeMB,
+		/* MaxTotalSizeMB: */ maxTotalSizeMB,
+		/* FormatFn:       */ formatFn,
+
+		/* file:           */ nil,
+		/* size:           */ 0,
+		/* millCh:         */ make(chan struct{}, 2),
+		/* millWG:         */ sync.WaitGroup{},
+		/* stopMillOnce:  */ sync.Once{},
+		/* fmtbuf:         */ nil,
+	}
+
+	logger.millWG.Add(1)
+	go logger.millRun()
+
+	return logger
+}
 
 func (me *Logger) Write(p []byte) (n int, err error) {
 	writeLen := int64(len(p))
@@ -57,20 +79,50 @@ func (me *Logger) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (me *Logger) Close() error {
+func (me *Logger) closeFile() error {
+	var ERR error
+
 	if me.file == nil {
 		return nil
 	}
-	err := me.file.Close()
+
+	err := me.Flush()
+	if ERR == nil {
+		ERR = err
+	}
+
+	err = me.file.Close()
+	if ERR == nil {
+		ERR = err
+	}
 	me.file = nil
 
-	// problem solved!
-	time.Sleep(500 * time.Millisecond)
-
-	// if me.millCh != nil {
-	//	close(me.millCh)
-	//	me.millCh = nil
-	// }
+	return ERR
+}
+func (me *Logger) Close() error {
+	err := me.closeFile()
+	me.StopMill()
 
 	return err
+}
+
+func (me *Logger) Flush() error {
+	return Flush(me.file)
+}
+
+type FlusherError interface{ Flush() error }
+type FlusherVoid interface{ Flush() }
+
+func Flush(wr io.Writer) error {
+	if wr == nil {
+		return nil
+	}
+	if flusher, ok := wr.(FlusherError); ok {
+		return flusher.Flush()
+	}
+	if flusher, ok := wr.(FlusherVoid); ok {
+		flusher.Flush()
+		return nil
+	}
+	return nil
 }

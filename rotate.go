@@ -65,7 +65,7 @@ func (me *Logger) openExistingOrNew(writeLen int) error {
 }
 
 func (me *Logger) rotate() error {
-	if err := me.Close(); err != nil {
+	if err := me.closeFile(); err != nil {
 		return err
 	}
 	if err := me.openNew(); err != nil {
