@@ -2,6 +2,7 @@ package tumble
 
 import (
 	"io"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -20,9 +21,9 @@ var (
 	MB    = uint(1024 * 1024)
 )
 
-func NewLogger(filepath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func(msg []byte, buf []byte) ([]byte, int)) *Logger {
+func NewLogger(fpath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func(msg []byte, buf []byte) ([]byte, int)) *Logger {
 	logger := &Logger{
-		/* Filepath:       */ filepath,
+		/* Filepath:       */ filepath.Clean(fpath),
 		/* MaxLogSizeMB:   */ maxLogSizeMB,
 		/* MaxTotalSizeMB: */ maxTotalSizeMB,
 		/* FormatFn:       */ formatFn,

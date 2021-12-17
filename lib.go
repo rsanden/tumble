@@ -5,7 +5,9 @@ import (
 	"sync"
 )
 
-// Logger parameters:
+// Logger is an io.WriteCloser which writes content to a rotating log archive.
+//
+// Parameters:
 //
 //     fpath:          Path to the logfile
 //     maxLogSizeMB:   Logfile size before it gets rotation (in MB)
@@ -66,4 +68,16 @@ type Logger struct {
 	millWG       sync.WaitGroup
 	stopMillOnce sync.Once
 	fmtbuf       []byte
+}
+
+// Muster is an io.ReadCloser which produces the full history of
+// the given log file and its archives seamlessly and in order.
+type Muster struct {
+	Filepath string
+
+	latestTs           Timestamp
+	unreadyTs          Timestamp
+	openArchives       []io.Closer
+	archiveMultireader io.Reader
+	lastOpenFile       io.ReadCloser
 }

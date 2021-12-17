@@ -7,9 +7,27 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func setOpenFilesLimit(n uint64) {
+	var rLimit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	rLimit.Cur = n
+	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	if rLimit.Cur != n {
+		panic("failed to set open files limit")
+	}
+}
 
 // Mock the current time and provide a way to advance it manually
 var fakeCurrentTime = time.Now().UTC()

@@ -5,6 +5,7 @@ SHELL:=/bin/bash
 all: exe
 
 clean:
+	rm -rf tmp
 	cd cmd/tumble && make clean
 
 exe: clean
