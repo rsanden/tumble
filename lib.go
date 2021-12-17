@@ -1,7 +1,7 @@
 package tumble
 
 import (
-	"os"
+	"io"
 	"sync"
 )
 
@@ -60,7 +60,7 @@ type Logger struct {
 	MaxTotalSizeMB uint
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)
 
-	file         *os.File // Why not io.Writer?
+	file         io.WriteCloser
 	size         int64
 	millCh       chan struct{}
 	millWG       sync.WaitGroup
