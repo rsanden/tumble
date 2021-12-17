@@ -23,13 +23,14 @@ import (
 // Default formatting example:
 //
 //     log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-//     log.SetOutput(tumble.NewLogger(
+//     logger := tumble.NewLogger(
 //         /* Filepath:       */ "/path/to/foo.log",
 //         /* MaxLogSizeMB:   */ 100,
 //         /* MaxTotalSizeMB: */ 500,
 //         /* FormatFn:       */ nil,
-//     ))
+//     )
 //     defer logger.Close()
+//     log.SetOutput(logger)
 //
 // Custom Formatting example:
 //
@@ -41,13 +42,14 @@ import (
 //         buf = append(buf, msg...)           // Therefore, this starts at index 26
 //         return buf, 26                      // alternatively, len(now)+len(" : ")
 //     }
-//     log.SetOutput(tumble.NewLogger(
+//     logger := tumble.NewLogger(
 //         /* Filepath:       */ "/path/to/foo.log",
 //         /* MaxLogSizeMB:   */ 100,
 //         /* MaxTotalSizeMB: */ 500,
 //         /* FormatFn:       */ formatFn,
-//     ))
+//     )
 //     defer logger.Close()
+//     log.SetOutput(logger)
 //
 // Note: maxTotalSizeMB is not precise. It may be temporarily exceeded
 //       during rotation by the amount of MaxLogSizeMB.
