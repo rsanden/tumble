@@ -3,6 +3,7 @@ package main
 // Note: Run tests sequentially (go test -parallel 1)
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -25,7 +27,7 @@ func teardown() {
 	os.RemoveAll("tmp")
 }
 
-func TestIntegrationTextMode(t *testing.T) {
+func TestIntegrationLogTextMode(t *testing.T) {
 	setup()
 
 	text := "this\nis\nnewline-delimited\nbut not very incredible\ntext\n"
@@ -53,7 +55,7 @@ func TestIntegrationTextMode(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationBinaryMode(t *testing.T) {
+func TestIntegrationLogBinaryMode(t *testing.T) {
 	setup()
 
 	data := []byte{0x00, 0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33}
@@ -82,7 +84,7 @@ func TestIntegrationBinaryMode(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationTimestamp(t *testing.T) {
+func TestIntegrationLogTimestamp(t *testing.T) {
 	setup()
 
 	timeFormat := "2006-01-02 15:04:05.000000000"
@@ -145,7 +147,7 @@ func TestIntegrationTimestamp(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationTeeText(t *testing.T) {
+func TestIntegrationLogTeeText(t *testing.T) {
 	setup()
 
 	textLines := []string{
@@ -194,7 +196,7 @@ func TestIntegrationTeeText(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationTeeBinary(t *testing.T) {
+func TestIntegrationLogTeeBinary(t *testing.T) {
 	setup()
 
 	data := []byte{0x00, 0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33}
@@ -234,7 +236,7 @@ func TestIntegrationTeeBinary(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationContinuityText(t *testing.T) {
+func TestIntegrationLogContinuityText(t *testing.T) {
 	setup()
 
 	cmd := exec.Command(
@@ -383,7 +385,7 @@ func TestIntegrationContinuityText(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationContinuityBinary(t *testing.T) {
+func TestIntegrationLogContinuityBinary(t *testing.T) {
 	setup()
 
 	cmd := exec.Command(
@@ -513,7 +515,7 @@ func TestIntegrationContinuityBinary(t *testing.T) {
 	teardown()
 }
 
-func TestIntegrationClose(t *testing.T) {
+func TestIntegrationLogClose(t *testing.T) {
 	setup()
 
 	cmd := exec.Command(
@@ -593,4 +595,150 @@ func TestIntegrationClose(t *testing.T) {
 	if files[1].Name() != "foo.log" {
 		t.Fatalf("Expected foo.log but instead found %s", files[1].Name())
 	}
+}
+
+func createDumpTextData() {
+	count := 2001
+	start := 1500000055
+	for i := 1; i <= count-1; i++ {
+		fname := fmt.Sprintf("foo-%d.log.gz", start+100*i)
+		fpath := "tmp/" + fname
+		content := fmt.Sprintf("This is file number %d\n", i)
+		gzContentBuf := new(bytes.Buffer)
+		gz := gzip.NewWriter(gzContentBuf)
+		if _, err := gz.Write([]byte(content)); err != nil {
+			panic(err)
+		}
+		if err := gz.Close(); err != nil {
+			panic(err)
+		}
+		if err := ioutil.WriteFile(fpath, gzContentBuf.Bytes(), 0644); err != nil {
+			panic(err)
+		}
+	}
+	content := fmt.Sprintf("This is file number %d\n", count)
+	if err := ioutil.WriteFile("tmp/foo.log", []byte(content), 0644); err != nil {
+		panic(err)
+	}
+}
+
+func createDumpBinaryData() {
+	data1 := []byte{0x00, 0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33}
+	data2 := []byte{0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33, 0x44}
+	data3 := []byte{0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55}
+
+	gzContentBuf := new(bytes.Buffer)
+	gz := gzip.NewWriter(gzContentBuf)
+	if _, err := gz.Write([]byte(data1)); err != nil {
+		panic(err)
+	}
+	if err := gz.Close(); err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile("tmp/foo-1500000000.log.gz", gzContentBuf.Bytes(), 0644); err != nil {
+		panic(err)
+	}
+
+	gzContentBuf = new(bytes.Buffer)
+	gz = gzip.NewWriter(gzContentBuf)
+	if _, err := gz.Write([]byte(data2)); err != nil {
+		panic(err)
+	}
+	if err := gz.Close(); err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile("tmp/foo-1600000000.log.gz", gzContentBuf.Bytes(), 0644); err != nil {
+		panic(err)
+	}
+
+	if err := ioutil.WriteFile("tmp/foo.log", data3, 0644); err != nil {
+		panic(err)
+	}
+}
+
+func setOpenFilesLimit(n uint64) {
+	var rLimit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	rLimit.Cur = n
+	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+		panic(err)
+	}
+	if rLimit.Cur != n {
+		panic("failed to set open files limit")
+	}
+}
+
+func TestIntegrationDumpTextMode(t *testing.T) {
+	// Set open files limit to 1024 for test
+	setOpenFilesLimit(1024)
+
+	setup()
+	createDumpTextData()
+
+	var stdout bytes.Buffer
+	cmd := exec.Command(
+		"./tumble",
+		"--dump", "tmp/foo.log",
+	)
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	idx := 2001 - int(0.75*1024.0)
+
+	stdoutReader := strings.NewReader(stdout.String())
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	for stdoutScanner.Scan() {
+		expected := fmt.Sprintf("This is file number %d", idx)
+		got := stdoutScanner.Text()
+		if got != expected {
+			t.Fatalf("expected '%s' but got '%s'", expected, got)
+		}
+		idx += 1
+	}
+	if err := stdoutScanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if idx != 2001+1 {
+		t.Fatalf("expected idx=2002 but got idx=%d", idx)
+	}
+
+	teardown()
+}
+
+func TestIntegrationDumpBinaryMode(t *testing.T) {
+	setup()
+	createDumpBinaryData()
+
+	data1 := []byte{0x00, 0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33}
+	data2 := []byte{0x11, 0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33, 0x44}
+	data3 := []byte{0x22, 0x33, 0xde, 0xca, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55}
+
+	var stdout bytes.Buffer
+	cmd := exec.Command(
+		"./tumble",
+		"--binary",
+		"--dump", "tmp/foo.log",
+	)
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	var expected bytes.Buffer
+	expected.Write(data1)
+	expected.Write(data2)
+	expected.Write(data3)
+
+	if bytes.Compare(stdout.Bytes(), expected.Bytes()) != 0 {
+		t.Fatalf("%q != %q", stdout.Bytes(), expected.Bytes())
+	}
+
+	teardown()
 }

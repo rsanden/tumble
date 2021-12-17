@@ -3,8 +3,10 @@ package tumble
 // Note: Run tests sequentially (go test -parallel 1)
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -433,4 +435,224 @@ func TestTimestampFormatFn(t *testing.T) {
 	expectedContent = append(expectedContent, []byte(" : ")...)
 	expectedContent = append(expectedContent, b...)
 	existsWithContent(filename, expectedContent, t)
+}
+
+func TestDumpPaths(t *testing.T) {
+	var muster *Muster
+	var err error
+	var ts int64
+
+	muster = NewMuster("foo.log")
+	equals("", muster.dirpath(), t)
+	equals("foo", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("foo-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("bad-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("./foo.log")
+	equals("", muster.dirpath(), t)
+	equals("foo", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("foo-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("bad-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("tmp/foo.log")
+	equals("tmp/", muster.dirpath(), t)
+	equals("foo", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("tmp/foo-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("tmp/bad-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("./tmp/foo.log")
+	equals("tmp/", muster.dirpath(), t)
+	equals("foo", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("tmp/foo-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("tmp/bad-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("/path/to/foo.log")
+	equals("/path/to/", muster.dirpath(), t)
+	equals("foo", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("/path/to/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("/path/to/foo-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("/path/to/bad-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("foolog")
+	equals("", muster.dirpath(), t)
+	equals("foolog", muster.namePrefix(), t)
+	equals("", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("foolog-1500000000" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("badlog-1500000000" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("tmp/foolog")
+	equals("tmp/", muster.dirpath(), t)
+	equals("foolog", muster.namePrefix(), t)
+	equals("", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("tmp/foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("tmp/foolog-1500000000" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("tmp/badlog-1500000000" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("/path/to/foolog")
+	equals("/path/to/", muster.dirpath(), t)
+	equals("foolog", muster.namePrefix(), t)
+	equals("", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("/path/to/foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("/path/to/foolog-1500000000" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("/path/to/badlog-1500000000" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("foo.bar.log")
+	equals("", muster.dirpath(), t)
+	equals("foo.bar", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("foo.bar-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("bad.bar-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("tmp/foo.bar.log")
+	equals("tmp/", muster.dirpath(), t)
+	equals("foo.bar", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("tmp/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("tmp/foo.bar-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("tmp/bad.bar-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("/path/to/foo.bar.log")
+	equals("/path/to/", muster.dirpath(), t)
+	equals("foo.bar", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("/path/to/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("/path/to/foo.bar-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("/path/to/bad.bar-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("foo-bar.baz.log")
+	equals("", muster.dirpath(), t)
+	equals("foo-bar.baz", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("foo-bar.baz-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("bad-bar.baz-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("tmp/foo-bar.baz.log")
+	equals("tmp/", muster.dirpath(), t)
+	equals("foo-bar.baz", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("tmp/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("tmp/foo-bar.baz-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("tmp/bad-bar.baz-1500000000.log" + compressSuffix)
+	notNil(err, t)
+
+	muster = NewMuster("/path/to/foo-bar.baz.log")
+	equals("/path/to/", muster.dirpath(), t)
+	equals("foo-bar.baz", muster.namePrefix(), t)
+	equals(".log", muster.nameExt(), t)
+	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
+	equals("/path/to/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	ts, err = muster.fpathToTimestamp("/path/to/foo-bar.baz-1500000000.log" + compressSuffix)
+	isNil(err, t)
+	equals(int64(1500000000), ts, t)
+	_, err = muster.fpathToTimestamp("/path/to/bad-bar.baz-1500000000.log" + compressSuffix)
+	notNil(err, t)
+}
+
+func createDumpTestData() {
+	count := 2001
+	start := 1500000055
+	for i := 1; i <= count-1; i++ {
+		fname := fmt.Sprintf("foo-%d.log.gz", start+100*i)
+		fpath := "tmp/" + fname
+		content := fmt.Sprintf("This is file number %d\n", i)
+		gzContentBuf := new(bytes.Buffer)
+		gz := gzip.NewWriter(gzContentBuf)
+		if _, err := gz.Write([]byte(content)); err != nil {
+			panic(err)
+		}
+		if err := gz.Close(); err != nil {
+			panic(err)
+		}
+		if err := ioutil.WriteFile(fpath, gzContentBuf.Bytes(), 0644); err != nil {
+			panic(err)
+		}
+	}
+	content := fmt.Sprintf("This is file number %d\n", count)
+	if err := ioutil.WriteFile("tmp/foo.log", []byte(content), 0644); err != nil {
+		panic(err)
+	}
+}
+
+func TestDump(t *testing.T) {
+	// Set open files limit to 1024 for test
+	setOpenFilesLimit(1024)
+
+	os.Mkdir("tmp", 0700)
+	defer os.RemoveAll("tmp")
+	createDumpTestData()
+
+	muster := NewMuster("tmp/foo.log")
+	defer muster.Close()
+
+	idx := 2001 - muster.MaxArchiveLookback()
+	scanner := bufio.NewScanner(muster)
+	for scanner.Scan() {
+		equals(fmt.Sprintf("This is file number %d", idx), scanner.Text(), t)
+		idx += 1
+	}
+	isNil(scanner.Err(), t)
+	equals(2001+1, idx, t)
 }
