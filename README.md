@@ -12,6 +12,7 @@ The main operational changes are as follows:
  - Logfiles/Archives are not chown'ed.
  - No locking. Asynchronous Rotate() support removed.
  - Allows a formatting callback to be provided to set the timestamp format.
+ - Includes a -dump option to print a log along with any archives
 
 Many other configuration options are removed (no maximum archive age, compression is always enabled, etc).
 
