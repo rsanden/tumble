@@ -206,12 +206,8 @@ func (me *Logger) drainMillCh() {
 
 func (me *Logger) millRun() {
 	defer me.millWG.Done()
-	for {
-		_, ok := <-me.millCh
-		if !ok {
-			// millCh is closed.  Time to shut down.
-			break
-		}
+
+	for range me.millCh {
 		me.drainMillCh()
 
 		if err := me.millRunOnce(); err != nil {
