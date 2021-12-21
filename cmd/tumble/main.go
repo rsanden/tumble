@@ -62,18 +62,26 @@ func init_globals() {
 }
 
 func runLogBinaryMode(logger *tumble.Logger) error {
-    writers := []io.Writer{ logger }
-    if isTeeStdout { writers=append(writers, os.Stdout) }
-    if isTeeStderr { writers=append(writers, os.Stderr) }
-    _, err := io.Copy(io.MultiWriter(writers...) , os.Stdin)
-    return err
+	writers := []io.Writer{logger}
+	if isTeeStdout {
+		writers = append(writers, os.Stdout)
+	}
+	if isTeeStderr {
+		writers = append(writers, os.Stderr)
+	}
+	_, err := io.Copy(io.MultiWriter(writers...), os.Stdin)
+	return err
 }
 
 func runLogTextMode(logger *tumble.Logger) error {
-    writers := []io.Writer{ logger }
-    if isTeeStdout { writers=append(writers, os.Stdout) }
-    if isTeeStderr { writers=append(writers, os.Stderr) }
-    multiWriter := io.MultiWriter(writers...)
+	writers := []io.Writer{logger}
+	if isTeeStdout {
+		writers = append(writers, os.Stdout)
+	}
+	if isTeeStderr {
+		writers = append(writers, os.Stderr)
+	}
+	multiWriter := io.MultiWriter(writers...)
 
 	var line []byte
 	scanner := bufio.NewScanner(os.Stdin)
@@ -81,7 +89,7 @@ func runLogTextMode(logger *tumble.Logger) error {
 		line = line[:0]
 		line = append(line, scanner.Bytes()...)
 		line = append(line, '\n')
-        if _, err := multiWriter.Write(line); err != nil {
+		if _, err := multiWriter.Write(line); err != nil {
 			return err
 		}
 	}
@@ -112,10 +120,12 @@ func runDump() error {
 	)
 	defer muster.Close()
 
-    writers := []io.Writer{ os.Stdout }
-    if isTeeStderr { writers=append(writers, os.Stderr) }
-    _, err := io.Copy(io.MultiWriter(writers...) , muster)
-    return err
+	writers := []io.Writer{os.Stdout}
+	if isTeeStderr {
+		writers = append(writers, os.Stderr)
+	}
+	_, err := io.Copy(io.MultiWriter(writers...), muster)
+	return err
 }
 
 func main() {

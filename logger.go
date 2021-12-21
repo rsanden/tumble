@@ -12,8 +12,8 @@ const (
 	fileMode       = 0644
 )
 
-// Ensure we always implement io.WriteCloser
-var _ io.WriteCloser = (*Logger)(nil)
+var _ io.WriteCloser = (*Logger)(nil) // Implement io.WriteCloser
+var _ Filestamper = (*Logger)(nil)    // Implement Filestamper
 
 var (
 	// These constants are mocked out by tests

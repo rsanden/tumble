@@ -3,6 +3,7 @@ package tumble
 import (
 	"io"
 	"sync"
+	"time"
 )
 
 // Logger is an io.WriteCloser which writes content to a rotating log archive.
@@ -75,8 +76,8 @@ type Logger struct {
 type Muster struct {
 	Filepath string
 
-	latestTs           Timestamp
-	unreadyTs          Timestamp
+	latestTs           time.Time
+	unreadyTs          time.Time
 	openArchives       []io.Closer
 	archiveMultireader io.Reader
 	lastOpenFile       io.ReadCloser

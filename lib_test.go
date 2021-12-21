@@ -199,23 +199,23 @@ func TestOldLogFiles(t *testing.T) {
 	equals(t1, files[1].timestamp, t)
 }
 
-func TestTimeFromName(t *testing.T) {
+func TestFpathToTimestamp(t *testing.T) {
 	l := &Logger{Filepath: "/var/log/myfoo/foo.log"}
-	prefix, ext := l.prefixAndExt()
 
 	tests := []struct {
 		filename string
 		want     time.Time
 		wantErr  bool
 	}{
-		{"foo-1399214673.log", time.Date(2014, 5, 4, 14, 44, 33, 000000000, time.UTC), false},
+		{"foo-1399214673.log" + compressSuffix, time.Date(2014, 5, 4, 14, 44, 33, 000000000, time.UTC), false},
+		{"foo-1399214673.log", time.Time{}, true},
 		{"foo-1399214673", time.Time{}, true},
 		{"1399214673.log", time.Time{}, true},
 		{"foo.log", time.Time{}, true},
 	}
 
 	for _, test := range tests {
-		got, err := l.timeFromName(test.filename, prefix, ext)
+		got, err := l.fpathToTimestamp(l.dirpath() + test.filename)
 		equals(got, test.want, t)
 		equals(err != nil, test.wantErr, t)
 	}
@@ -440,17 +440,18 @@ func TestTimestampFormatFn(t *testing.T) {
 func TestDumpPaths(t *testing.T) {
 	var muster *Muster
 	var err error
-	var ts int64
+	var ts time.Time
+	var LOG_TIME = time.Unix(1500000000, 0).UTC()
 
 	muster = NewMuster("foo.log")
 	equals("", muster.dirpath(), t)
 	equals("foo", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("foo-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("bad-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -459,10 +460,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("foo-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("foo-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("bad-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -471,10 +472,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("tmp/foo-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("tmp/bad-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -483,10 +484,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("tmp/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("tmp/foo-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("tmp/bad-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -495,10 +496,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("/path/to/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("/path/to/foo-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("/path/to/foo-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("/path/to/bad-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -507,10 +508,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foolog", muster.namePrefix(), t)
 	equals("", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("foolog-1500000000"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("foolog-1500000000" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("badlog-1500000000" + compressSuffix)
 	notNil(err, t)
 
@@ -519,10 +520,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foolog", muster.namePrefix(), t)
 	equals("", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("tmp/foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("tmp/foolog-1500000000"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("tmp/foolog-1500000000" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("tmp/badlog-1500000000" + compressSuffix)
 	notNil(err, t)
 
@@ -531,10 +532,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foolog", muster.namePrefix(), t)
 	equals("", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("/path/to/foolog-1500000000"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("/path/to/foolog-1500000000"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("/path/to/foolog-1500000000" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("/path/to/badlog-1500000000" + compressSuffix)
 	notNil(err, t)
 
@@ -543,10 +544,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo.bar", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("foo.bar-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("bad.bar-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -555,10 +556,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo.bar", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("tmp/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("tmp/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("tmp/foo.bar-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("tmp/bad.bar-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -567,10 +568,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo.bar", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("/path/to/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("/path/to/foo.bar-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("/path/to/foo.bar-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("/path/to/bad.bar-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -579,10 +580,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo-bar.baz", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("foo-bar.baz-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("bad-bar.baz-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -591,10 +592,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo-bar.baz", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("tmp/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("tmp/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("tmp/foo-bar.baz-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("tmp/bad-bar.baz-1500000000.log" + compressSuffix)
 	notNil(err, t)
 
@@ -603,10 +604,10 @@ func TestDumpPaths(t *testing.T) {
 	equals("foo-bar.baz", muster.namePrefix(), t)
 	equals(".log", muster.nameExt(), t)
 	equals(muster.Filepath, muster.dirpath()+muster.namePrefix()+muster.nameExt(), t)
-	equals("/path/to/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(1500000000), t)
+	equals("/path/to/foo-bar.baz-1500000000.log"+compressSuffix, muster.timestampToFpath(LOG_TIME), t)
 	ts, err = muster.fpathToTimestamp("/path/to/foo-bar.baz-1500000000.log" + compressSuffix)
 	isNil(err, t)
-	equals(int64(1500000000), ts, t)
+	equals(LOG_TIME, ts, t)
 	_, err = muster.fpathToTimestamp("/path/to/bad-bar.baz-1500000000.log" + compressSuffix)
 	notNil(err, t)
 }

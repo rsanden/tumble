@@ -8,106 +8,28 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
 
-type Timestamp = int64
-
-const BIG_TIMESTAMP = Timestamp(999999999999)
 const SLEEP_TIME = 100 * time.Millisecond
 
-// Ensure we always implement io.ReadCloser
-var _ io.ReadCloser = (*Muster)(nil)
+var FUTURE_TIMESTAMP = time.Unix(999999999999, 0).UTC()
+
+var _ io.ReadCloser = (*Muster)(nil) // Implement io.ReadCloser
+var _ Filestamper = (*Muster)(nil)   // Implement Filestamper
 
 func NewMuster(fpath string) *Muster {
 	muster := &Muster{
 		/* Filepath: */ filepath.Clean(fpath),
 
-		/* latestTs           */ Timestamp(0),
-		/* unreadyTs          */ BIG_TIMESTAMP,
+		/* latestTs           */ time.Time{},
+		/* unreadyTs          */ FUTURE_TIMESTAMP,
 		/* openArchives       */ nil,
 		/* archiveMultireader */ nil,
 		/* lastOpenFile       */ nil,
 	}
 	return muster
-}
-
-// This is:
-//           ""  in          "foo.log",
-//        "tmp/  in      "tmp/foo.log"
-//   "/path/to/" in "/path/to/foo.log"
-//
-func (me *Muster) dirpath() string {
-	if filepath.Dir(me.Filepath) == "." {
-		return ""
-	}
-	return filepath.Dir(me.Filepath) + "/"
-}
-
-// This is "foo" in "/path/to/foo.log"
-func (me *Muster) namePrefix() string {
-	return me.Filepath[len(me.dirpath()) : len(me.Filepath)-len(me.nameExt())]
-}
-
-// This is ".log" in "/path/to/foo.log"
-func (me *Muster) nameExt() string {
-	return filepath.Ext(me.Filepath)
-}
-
-func (me *Muster) timestampToFpath(ts Timestamp) string {
-	return fmt.Sprintf("%s%s-%d%s%s", me.dirpath(), me.namePrefix(), ts, me.nameExt(), compressSuffix)
-}
-
-func (me *Muster) timestampLength() int {
-	// Today we use a length-10 dateint (but this could be changed)
-	return 10
-}
-
-func (me *Muster) parseTimestamp(s string) (Timestamp, error) {
-	if len(s) != me.timestampLength() {
-		return 0, errors.New("invalid timestamp")
-	}
-
-	ts, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0, errors.New("invalid timestamp")
-	}
-
-	return ts, nil
-}
-
-func (me *Muster) fpathToTimestamp(fpath string) (Timestamp, error) {
-	dirpath := me.dirpath()
-	namePrefix := me.namePrefix()
-	nameExt := me.nameExt()
-
-	// fpath must be exactly this long to possibly match
-	if len(fpath) != len(dirpath)+len(namePrefix)+len("-")+me.timestampLength()+len(nameExt)+len(compressSuffix) {
-		return 0, errors.New("mismatch")
-	}
-
-	middle := fpath[len(dirpath)+len(namePrefix) : len(fpath)-len(nameExt)-len(compressSuffix)]
-
-	// middle should be a hyphen followed by a timestamp
-	if !strings.HasPrefix(middle, "-") {
-		return 0, errors.New("mismatch")
-	}
-
-	// middle (after hyphen) should be exactly a timestamp
-	ts, err := me.parseTimestamp(middle[1:])
-	if err != nil {
-		return 0, errors.New("mismatch")
-	}
-
-	// finally, check that this is our log (rather than another with the same length)
-	if fpath != me.timestampToFpath(ts) {
-		return 0, errors.New("mismatch")
-	}
-
-	return ts, nil
 }
 
 func getOpenFilesLimit() uint64 {
@@ -119,23 +41,27 @@ func getOpenFilesLimit() uint64 {
 	return rlimit.Cur
 }
 
-func (me *Muster) getNewTimestamps() ([]Timestamp, error) {
+func (me *Muster) getNewTimestamps() ([]time.Time, error) {
 	files, err := os.ReadDir(filepath.Dir(me.Filepath))
 	if err != nil {
 		return nil, fmt.Errorf("error listing timestamps: %w", err)
 	}
 
 	// Reset the unready timestamp each time
-	me.unreadyTs = BIG_TIMESTAMP
+	me.unreadyTs = FUTURE_TIMESTAMP
 
 	// potentialTimestamps are archive timestamps greater than me.latestTs
 	dirpath := me.dirpath()
-	potentialTimestamps := []Timestamp{}
+	potentialTimestamps := []time.Time{}
 	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+
 		// Check for a currently-compressing file.
 		ts, err := me.fpathToTimestamp(dirpath + f.Name() + compressSuffix)
 		if err == nil {
-			if ts < me.unreadyTs {
+			if ts.Before(me.unreadyTs) {
 				me.unreadyTs = ts
 			}
 			continue
@@ -149,21 +75,21 @@ func (me *Muster) getNewTimestamps() ([]Timestamp, error) {
 
 		// Add any timestamp greater than the latest one.
 		// We will filter unready ones later once we know the unready ceiling.
-		if ts > me.latestTs {
+		if ts.After(me.latestTs) {
 			potentialTimestamps = append(potentialTimestamps, ts)
 		}
 	}
 
 	// Reduce to ready timestamps
-	readyTimestamps := make([]Timestamp, 0, len(potentialTimestamps))
+	readyTimestamps := make([]time.Time, 0, len(potentialTimestamps))
 	for _, ts := range potentialTimestamps {
-		if ts < me.unreadyTs {
+		if ts.Before(me.unreadyTs) {
 			readyTimestamps = append(readyTimestamps, ts)
 		}
 	}
 
 	// Sort ready timestamps in descending order, limited to MaxArchiveLookback()
-	sort.Slice(readyTimestamps, func(i, j int) bool { return readyTimestamps[i] > readyTimestamps[j] })
+	sort.Slice(readyTimestamps, func(i, j int) bool { return readyTimestamps[i].After(readyTimestamps[j]) })
 	if len(readyTimestamps) > me.MaxArchiveLookback() {
 		readyTimestamps = readyTimestamps[:me.MaxArchiveLookback()]
 	}
@@ -278,7 +204,7 @@ func (me *Muster) Read(p []byte) (int, error) {
 		// When we make it to here, we have processed all ready archives,
 		// but there could still be an unready archive. In that case,
 		// we must wait for everything to be ready before proceeding.
-		if me.unreadyTs < BIG_TIMESTAMP {
+		if me.unreadyTs.Before(FUTURE_TIMESTAMP) {
 			time.Sleep(SLEEP_TIME)
 			continue
 		}
@@ -296,7 +222,7 @@ func (me *Muster) Read(p []byte) (int, error) {
 				if me.archiveMultireader != nil {
 					continue
 				}
-				if me.unreadyTs < BIG_TIMESTAMP {
+				if me.unreadyTs.Before(FUTURE_TIMESTAMP) {
 					time.Sleep(SLEEP_TIME)
 					continue
 				}

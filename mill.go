@@ -2,14 +2,12 @@ package tumble
 
 import (
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -82,51 +80,24 @@ func compressLogFile(src string) (err error) {
 	return nil
 }
 
-func (me *Logger) dir() string {
-	return filepath.Dir(me.Filepath)
-}
-
-func (me *Logger) prefixAndExt() (prefix, ext string) {
-	filename := filepath.Base(me.Filepath)
-	ext = filepath.Ext(filename)
-	prefix = filename[:len(filename)-len(ext)] + "-"
-	return prefix, ext
-}
-
-func (me *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
-	if !strings.HasPrefix(filename, prefix) {
-		return time.Time{}, errors.New("mismatched prefix")
-	}
-	if !strings.HasSuffix(filename, ext) {
-		return time.Time{}, errors.New("mismatched extension")
-	}
-	ts := filename[len(prefix) : len(filename)-len(ext)]
-	secs, err := strconv.ParseInt(ts, 10, 64)
-	if err != nil {
-		return time.Time{}, errors.New("invalid timestamp")
-	}
-	return time.Unix(secs, 0).UTC(), nil
-}
-
 func (me *Logger) oldLogFiles() ([]logInfo, error) {
-	files, err := ioutil.ReadDir(me.dir())
+	files, err := ioutil.ReadDir(filepath.Dir(me.Filepath))
 	if err != nil {
 		return nil, fmt.Errorf("can't read log file directory: %w", err)
 	}
 	logFiles := []logInfo{}
 
-	prefix, ext := me.prefixAndExt()
-
+	dirpath := me.dirpath()
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
-		if t, err := me.timeFromName(f.Name(), prefix, ext); err == nil {
-			logFiles = append(logFiles, logInfo{f, t})
+		if ts, err := me.fpathToTimestamp(dirpath + f.Name()); err == nil {
+			logFiles = append(logFiles, logInfo{f, ts})
 			continue
 		}
-		if t, err := me.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
-			logFiles = append(logFiles, logInfo{f, t})
+		if ts, err := me.fpathToTimestamp(dirpath + f.Name() + compressSuffix); err == nil {
+			logFiles = append(logFiles, logInfo{f, ts})
 			continue
 		}
 		// error parsing means that the suffix at the end was not generated
@@ -155,7 +126,7 @@ func (me *Logger) millRunOnce() error {
 	}
 	for _, f := range oldFiles {
 		if !strings.HasSuffix(f.Name(), compressSuffix) {
-			fn := filepath.Join(me.dir(), f.Name())
+			fn := filepath.Join(filepath.Dir(me.Filepath), f.Name())
 			err := compressLogFile(fn)
 			if err != nil {
 				return err
@@ -181,7 +152,7 @@ func (me *Logger) millRunOnce() error {
 	for _, f := range compressedFiles {
 		totalSizeBytes += f.Size()
 		if totalSizeBytes > int64((me.MaxTotalSizeMB-me.MaxLogSizeMB)*MB) {
-			err := os.Remove(filepath.Join(me.dir(), f.Name()))
+			err := os.Remove(filepath.Join(filepath.Dir(me.Filepath), f.Name()))
 			if err != nil {
 				return err
 			}
