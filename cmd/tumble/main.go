@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/rsanden/tumble"
@@ -111,6 +113,15 @@ func runLog() error {
 	} else {
 		runFn = runLogBinaryMode
 	}
+
+	// Schedule cleanup on interrupt
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		logger.StopMill()
+	}()
+
 	return runFn(logger)
 }
 
