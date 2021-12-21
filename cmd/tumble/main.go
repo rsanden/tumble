@@ -1,12 +1,15 @@
 package main
 
 import (
+	_ "embed"
+
 	"bufio"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +27,10 @@ var (
 	timeFormat   string
 	formatFn     func(msg []byte, buf []byte) ([]byte, int)
 	isDump       bool
+	isVersion    bool
+
+	//go:embed VERSION.txt
+	VERSION string
 )
 
 func init_globals() {
@@ -36,7 +43,13 @@ func init_globals() {
 	flag.BoolVar(&isTeeStderr /***/, "tee-stderr" /******/, false /**/, "tee to stderr (default: false)")
 	flag.StringVar(&timeFormat /**/, "time-format" /*****/, "" /*****/, "add timestamp with given format (default: no timestamp) (example: '2006-01-02 15:04:05.000')")
 	flag.StringVar(&dumpfile /****/, "dump" /************/, "" /*****/, "dump archives for given filepath and exit (default: do not dump)")
+	flag.BoolVar(&isVersion /*****/, "version" /*********/, false /**/, "print version and exit (default: false)")
 	flag.Parse()
+
+	if isVersion {
+		fmt.Println(strings.TrimSpace(VERSION))
+		os.Exit(0)
+	}
 
 	if dumpfile != "" {
 		if logfile != "" || maxLogSize != 0 || maxTotalSize != 0 {
