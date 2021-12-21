@@ -36,20 +36,20 @@ func compressLogFile(src string) (err error) {
 
 	f, err := os.Open(src)
 	if err != nil {
-		return fmt.Errorf("failed to open log file: %v", err)
+		return fmt.Errorf("failed to open log file: %w", err)
 	}
 	defer f.Close()
 
 	_, err = os.Stat(src)
 	if err != nil {
-		return fmt.Errorf("failed to stat log file: %v", err)
+		return fmt.Errorf("failed to stat log file: %w", err)
 	}
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress the log file.
 	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(fileMode))
 	if err != nil {
-		return fmt.Errorf("failed to open compressed log file: %v", err)
+		return fmt.Errorf("failed to open compressed log file: %w", err)
 	}
 	defer gzf.Close()
 
@@ -58,7 +58,7 @@ func compressLogFile(src string) (err error) {
 	defer func() {
 		if err != nil {
 			os.Remove(dst)
-			err = fmt.Errorf("failed to compress log file: %v", err)
+			err = fmt.Errorf("failed to compress log file: %w", err)
 		}
 	}()
 
@@ -111,7 +111,7 @@ func (me *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) 
 func (me *Logger) oldLogFiles() ([]logInfo, error) {
 	files, err := ioutil.ReadDir(me.dir())
 	if err != nil {
-		return nil, fmt.Errorf("can't read log file directory: %s", err)
+		return nil, fmt.Errorf("can't read log file directory: %w", err)
 	}
 	logFiles := []logInfo{}
 

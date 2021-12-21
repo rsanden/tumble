@@ -21,7 +21,7 @@ func (me *Logger) openNew() error {
 	if err == nil {
 		newname := backupName(name)
 		if err := os.Rename(name, newname); err != nil {
-			return fmt.Errorf("can't rename log file: %s", err)
+			return fmt.Errorf("can't rename log file: %w", err)
 		}
 	}
 
@@ -30,7 +30,7 @@ func (me *Logger) openNew() error {
 	// just wipe out the contents.
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
 	if err != nil {
-		return fmt.Errorf("can't open new logfile: %s", err)
+		return fmt.Errorf("can't open new logfile: %w", err)
 	}
 	me.file = f
 	me.size = 0
@@ -46,7 +46,7 @@ func (me *Logger) openExistingOrNew(writeLen int) error {
 		return me.openNew()
 	}
 	if err != nil {
-		return fmt.Errorf("error getting log file info: %s", err)
+		return fmt.Errorf("error getting log file info: %w", err)
 	}
 
 	if info.Size()+int64(writeLen) >= int64(me.MaxLogSizeMB*MB) {
