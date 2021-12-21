@@ -65,7 +65,6 @@ func TestIntegrationLogBinaryMode(t *testing.T) {
 		"--logfile", "tmp/foo.log",
 		"--max-log-size", "10",
 		"--max-total-size", "20",
-		"--binary",
 	)
 	cmd.Stdin = bytes.NewReader(data)
 	err := cmd.Run()
@@ -206,7 +205,6 @@ func TestIntegrationLogTeeBinary(t *testing.T) {
 		"--logfile", "tmp/foo.log",
 		"--max-log-size", "10",
 		"--max-total-size", "20",
-		"--binary",
 		"--tee-stdout",
 		"--tee-stderr",
 	)
@@ -393,7 +391,6 @@ func TestIntegrationLogContinuityBinary(t *testing.T) {
 		"--logfile", "tmp/foo.log",
 		"--max-log-size", "1",
 		"--max-total-size", "10",
-		"--binary",
 	)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -723,7 +720,6 @@ func TestIntegrationDumpBinaryMode(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd := exec.Command(
 		"./tumble",
-		"--binary",
 		"--dump", "tmp/foo.log",
 	)
 	cmd.Stdout = &stdout

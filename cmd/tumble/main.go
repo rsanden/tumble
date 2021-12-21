@@ -19,7 +19,6 @@ var (
 	maxTotalSize uint
 	isTeeStdout  bool
 	isTeeStderr  bool
-	isBinary     bool
 	timeFormat   string
 	formatFn     func(msg []byte, buf []byte) ([]byte, int)
 	isDump       bool
@@ -33,7 +32,6 @@ func init_globals() {
 	flag.UintVar(&maxTotalSize /**/, "max-total-size" /**/, 0 /******/, "max total size before deletion (in MB) (required)")
 	flag.BoolVar(&isTeeStdout /***/, "tee-stdout" /******/, false /**/, "tee to stdout (default: false)")
 	flag.BoolVar(&isTeeStderr /***/, "tee-stderr" /******/, false /**/, "tee to stderr (default: false)")
-	flag.BoolVar(&isBinary /******/, "binary" /**********/, false /**/, "raw binary input (default: false)")
 	flag.StringVar(&timeFormat /**/, "time-format" /*****/, "" /*****/, "add timestamp with given format (default: no timestamp) (example: '2006-01-02 15:04:05.000')")
 	flag.StringVar(&dumpfile /****/, "dump" /************/, "" /*****/, "dump archives for given filepath and exit (default: do not dump)")
 	flag.Parse()
@@ -63,49 +61,27 @@ func init_globals() {
 	}
 }
 
-func writeLogData(logger *tumble.Logger, buf []byte) error {
-	var ERR error
-	if _, err := logger.Write(buf); ERR == nil {
-		ERR = err
-	}
-	if isTeeStdout {
-		if _, err := os.Stdout.Write(buf); ERR == nil {
-			ERR = err
-		}
-	}
-	if isTeeStderr {
-		if _, err := os.Stderr.Write(buf); ERR == nil {
-			ERR = err
-		}
-	}
-	return ERR
-}
-
 func runLogBinaryMode(logger *tumble.Logger) error {
-	buf := make([]byte, BUF_SIZE)
-	for {
-		n, readErr := os.Stdin.Read(buf)
-		writeErr := writeLogData(logger, buf[:n])
-		if readErr == io.EOF {
-			return writeErr
-		}
-		if readErr != nil {
-			return readErr
-		}
-		if writeErr != nil {
-			return writeErr
-		}
-	}
+    writers := []io.Writer{ logger }
+    if isTeeStdout { writers=append(writers, os.Stdout) }
+    if isTeeStderr { writers=append(writers, os.Stderr) }
+    _, err := io.Copy(io.MultiWriter(writers...) , os.Stdin)
+    return err
 }
 
 func runLogTextMode(logger *tumble.Logger) error {
+    writers := []io.Writer{ logger }
+    if isTeeStdout { writers=append(writers, os.Stdout) }
+    if isTeeStderr { writers=append(writers, os.Stderr) }
+    multiWriter := io.MultiWriter(writers...)
+
 	var line []byte
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line = line[:0]
 		line = append(line, scanner.Bytes()...)
 		line = append(line, '\n')
-		if err := writeLogData(logger, line); err != nil {
+        if _, err := multiWriter.Write(line); err != nil {
 			return err
 		}
 	}
@@ -122,57 +98,12 @@ func runLog() error {
 	defer logger.Close()
 
 	var runFn func(logger *tumble.Logger) error
-	if isBinary {
-		runFn = runLogBinaryMode
-	} else {
+	if timeFormat != "" {
 		runFn = runLogTextMode
+	} else {
+		runFn = runLogBinaryMode
 	}
 	return runFn(logger)
-}
-
-func writeDumpData(buf []byte) error {
-	var ERR error
-	if _, err := os.Stdout.Write(buf); ERR == nil {
-		ERR = err
-	}
-	if isTeeStderr {
-		if _, err := os.Stderr.Write(buf); ERR == nil {
-			ERR = err
-		}
-	}
-	return ERR
-}
-
-func runDumpBinaryMode(muster *tumble.Muster) error {
-	buf := make([]byte, BUF_SIZE)
-	reader := bufio.NewReader(muster)
-	for {
-		n, readErr := reader.Read(buf)
-		writeErr := writeDumpData(buf[:n])
-		if readErr == io.EOF {
-			return writeErr
-		}
-		if readErr != nil {
-			return readErr
-		}
-		if writeErr != nil {
-			return writeErr
-		}
-	}
-}
-
-func runDumpTextMode(muster *tumble.Muster) error {
-	var line []byte
-	scanner := bufio.NewScanner(muster)
-	for scanner.Scan() {
-		line = line[:0]
-		line = append(line, scanner.Bytes()...)
-		line = append(line, '\n')
-		if err := writeDumpData(line); err != nil {
-			return err
-		}
-	}
-	return scanner.Err()
 }
 
 func runDump() error {
@@ -181,13 +112,10 @@ func runDump() error {
 	)
 	defer muster.Close()
 
-	var runFn func(muster *tumble.Muster) error
-	if isBinary {
-		runFn = runDumpBinaryMode
-	} else {
-		runFn = runDumpTextMode
-	}
-	return runFn(muster)
+    writers := []io.Writer{ os.Stdout }
+    if isTeeStderr { writers=append(writers, os.Stderr) }
+    _, err := io.Copy(io.MultiWriter(writers...) , muster)
+    return err
 }
 
 func main() {
