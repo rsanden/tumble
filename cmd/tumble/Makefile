@@ -10,7 +10,6 @@ clean:
 
 exe: clean
 	go build
-	strip tumble
 
 test: exe
 	go test -parallel 1
