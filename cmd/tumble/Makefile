@@ -1,6 +1,6 @@
 SHELL:=/bin/bash
 
-BUILD_VERSION=0.1.211221a
+BUILD_VERSION=0.1.211222a
 BUILD_NAME=tumble
 REPO_VERSION=$$(git rev-parse HEAD | head -c8)$$([[ $$(git diff | wc -c) = 0 ]] || echo '-d')
 
