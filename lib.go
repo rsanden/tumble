@@ -63,12 +63,14 @@ type Logger struct {
 	MaxTotalSizeMB uint
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)
 
-	file         io.WriteCloser
-	size         int64
-	millCh       chan struct{}
-	millWG       sync.WaitGroup
-	stopMillOnce sync.Once
-	fmtbuf       []byte
+	file          io.WriteCloser
+	size          int64
+	millCh        chan struct{}
+	millClosingCh chan struct{}
+	millStopOnce  sync.Once
+	millCloseOnce sync.Once
+	millWG        sync.WaitGroup
+	fmtbuf        []byte
 }
 
 // Muster is an io.ReadCloser which produces the full history of

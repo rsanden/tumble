@@ -21,13 +21,13 @@ var _ Filestamper = (*Muster)(nil)   // Implement Filestamper
 
 func NewMuster(fpath string) *Muster {
 	muster := &Muster{
-		/* Filepath: */ filepath.Clean(fpath),
+		/* Filepath:           */ filepath.Clean(fpath),
 
-		/* latestTs           */ time.Time{},
-		/* unreadyTs          */ FUTURE_TIMESTAMP,
-		/* openArchives       */ nil,
-		/* archiveMultireader */ nil,
-		/* lastOpenFile       */ nil,
+		/* latestTs:           */ time.Time{},
+		/* unreadyTs:          */ FUTURE_TIMESTAMP,
+		/* openArchives:       */ nil,
+		/* archiveMultireader: */ nil,
+		/* lastOpenFile:       */ nil,
 	}
 	return muster
 }

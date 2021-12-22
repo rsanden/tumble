@@ -178,11 +178,17 @@ func (me *Logger) drainMillCh() {
 func (me *Logger) millRun() {
 	defer me.millWG.Done()
 
-	for range me.millCh {
-		me.drainMillCh()
+	for {
+		select {
+		case <-me.millClosingCh:
+			return
 
-		if err := me.millRunOnce(); err != nil {
-			fmt.Fprintln(os.Stderr, "error in tumble/millRunOnce:", err)
+		case <-me.millCh:
+			me.drainMillCh()
+
+			if err := me.millRunOnce(); err != nil {
+				fmt.Fprintln(os.Stderr, "error in tumble/millRunOnce:", err)
+			}
 		}
 	}
 }
@@ -195,8 +201,8 @@ func (me *Logger) mill() {
 }
 
 func (me *Logger) StopMill() {
-	me.stopMillOnce.Do(func() {
-		close(me.millCh)
+	me.millCloseOnce.Do(func() {
+		me.millClosingCh <- struct{}{}
 	})
 	me.millWG.Wait()
 }
