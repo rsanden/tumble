@@ -128,11 +128,17 @@ func runLog() error {
 	}
 
 	// Schedule cleanup on interrupt
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
-		<-sigs
-		logger.StopMill()
+		sig := <-sigCh
+		switch sig {
+		case os.Interrupt, syscall.SIGINT, syscall.SIGTERM:
+			logger.StopMill()
+		case syscall.SIGHUP:
+			logger.RotateClose()
+			os.Exit(0)
+		}
 	}()
 
 	return runFn(logger)
