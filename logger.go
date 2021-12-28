@@ -110,3 +110,15 @@ func (me *Logger) Close() error {
 	})
 	return err
 }
+
+func (me *Logger) RotateClose() error {
+	// We must sleep 1 second before any forced rotate to prevent potential clobbering.
+	time.Sleep(1 * time.Second)
+
+	rotateErr := me.rotate()
+	closeErr := me.Close()
+	if rotateErr != nil {
+		return rotateErr
+	}
+	return closeErr
+}

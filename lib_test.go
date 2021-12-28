@@ -402,6 +402,43 @@ func TestCompressOnResume(t *testing.T) {
 	fileCount(dir, 2, t)
 }
 
+func TestRotateClose(t *testing.T) {
+	nowFn = fakeTime
+	MB = 1
+	dir := makeTempDir("TestRotateClose", t)
+	defer os.RemoveAll(dir)
+
+	filename := logFile(dir)
+	l := NewLogger(
+		/* Filepath:       */ filename,
+		/* MaxLogSizeMB:   */ 100,
+		/* MaxTotalSizeMB: */ 150,
+		/* FormatFn:       */ nil,
+	)
+	defer l.Close()
+
+	b := []byte("data")
+	err := ioutil.WriteFile(filename, b, fileMode)
+	isNil(err, t)
+	existsWithContent(filename, b, t)
+
+	newFakeTime()
+
+	l.RotateClose()
+
+	backupname := backupFile(dir)
+	bc := new(bytes.Buffer)
+	gz := gzip.NewWriter(bc)
+	_, err = gz.Write(b)
+	isNil(err, t)
+	err = gz.Close()
+	isNil(err, t)
+	existsWithContent(backupname+compressSuffix, bc.Bytes(), t)
+	notExist(backupname, t)
+
+	existsWithContent(filename, []byte(""), t)
+}
+
 func TestTimestampFormatFn(t *testing.T) {
 	dir := makeTempDir("TestTimestampFormatFn", t)
 	defer os.RemoveAll(dir)

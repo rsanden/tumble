@@ -15,7 +15,7 @@ func backupName(fpath string) string {
 	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", prefix, t.Unix(), ext))
 }
 
-func (me *Logger) openNew() error {
+func (me *Logger) renameFile() error {
 	name := me.Filepath
 	_, err := os.Stat(name)
 	if err == nil {
@@ -24,11 +24,18 @@ func (me *Logger) openNew() error {
 			return fmt.Errorf("can't rename log file: %w", err)
 		}
 	}
+	return nil
+}
+
+func (me *Logger) openNew() error {
+	if err := me.renameFile(); err != nil {
+		return fmt.Errorf("can't open new logfile: %w", err)
+	}
 
 	// we use truncate here because this should only get called when we've moved
 	// the file ourselves. if someone else creates the file in the meantime,
 	// just wipe out the contents.
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
+	f, err := os.OpenFile(me.Filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
 	if err != nil {
 		return fmt.Errorf("can't open new logfile: %w", err)
 	}
