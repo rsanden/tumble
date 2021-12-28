@@ -20,13 +20,14 @@ const BUF_SIZE = 32 * 1024
 
 var (
 	logfile      string
-	maxLogSize   uint
-	maxTotalSize uint
+	maxLogSize   uint64
+	maxTotalSize uint64
 	isTeeStdout  bool
 	isTeeStderr  bool
 	timeFormat   string
 	formatFn     func(msg []byte, buf []byte) ([]byte, int)
 	isDump       bool
+	isRotate     bool
 	isVersion    bool
 
 	//go:embed VERSION.txt
@@ -34,16 +35,17 @@ var (
 )
 
 func init_globals() {
-	var dumpfile string
+	var dumpfile, rotatefile string
 
-	flag.StringVar(&logfile /*****/, "logfile" /*********/, "" /*****/, "path to logfile (required)")
-	flag.UintVar(&maxLogSize /****/, "max-log-size" /****/, 0 /******/, "max log size before rotation (in MB) (required)")
-	flag.UintVar(&maxTotalSize /**/, "max-total-size" /**/, 0 /******/, "max total size before deletion (in MB) (required)")
-	flag.BoolVar(&isTeeStdout /***/, "tee-stdout" /******/, false /**/, "tee to stdout (default: false)")
-	flag.BoolVar(&isTeeStderr /***/, "tee-stderr" /******/, false /**/, "tee to stderr (default: false)")
-	flag.StringVar(&timeFormat /**/, "time-format" /*****/, "" /*****/, "add timestamp with given format (default: no timestamp) (example: '2006-01-02 15:04:05.000')")
-	flag.StringVar(&dumpfile /****/, "dump" /************/, "" /*****/, "dump archives for given filepath and exit (default: do not dump)")
-	flag.BoolVar(&isVersion /*****/, "version" /*********/, false /**/, "print version and exit (default: false)")
+	flag.StringVar(&logfile /*******/, "logfile" /*********/, "" /*****/, "path to logfile (required)")
+	flag.Uint64Var(&maxLogSize /****/, "max-log-size" /****/, 0 /******/, "max log size before rotation (in MB) (required)")
+	flag.Uint64Var(&maxTotalSize /**/, "max-total-size" /**/, 0 /******/, "max total size before deletion (in MB) (required)")
+	flag.BoolVar(&isTeeStdout /*****/, "tee-stdout" /******/, false /**/, "tee to stdout (default: false)")
+	flag.BoolVar(&isTeeStderr /*****/, "tee-stderr" /******/, false /**/, "tee to stderr (default: false)")
+	flag.StringVar(&timeFormat /****/, "time-format" /*****/, "" /*****/, "add timestamp with given format (default: no timestamp) (example: '2006-01-02 15:04:05.000')")
+	flag.StringVar(&dumpfile /******/, "dump" /************/, "" /*****/, "dump archives for given filepath and exit (default: do not dump)")
+	flag.StringVar(&rotatefile /****/, "rotate" /**********/, "" /*****/, "rotate given filepath and exit (default: do not rotate-and-exit)\n(IMPORTANT: DO NOT use on a file currently being written to by tumble. Doing so will break logging. Stop the running tumble instance first.)")
+	flag.BoolVar(&isVersion /*******/, "version" /*********/, false /**/, "print version and exit (default: false)")
 	flag.Parse()
 
 	if isVersion {
@@ -52,14 +54,21 @@ func init_globals() {
 	}
 
 	if dumpfile != "" {
-		if logfile != "" || maxLogSize != 0 || maxTotalSize != 0 {
+		if logfile != "" || maxLogSize != 0 || maxTotalSize != 0 || rotatefile != "" {
 			flag.Usage()
 			os.Exit(1)
 		}
 		isDump = true
 		logfile = dumpfile
+	} else if rotatefile != "" {
+		if logfile != "" || maxLogSize != 0 || maxTotalSize != 0 || dumpfile != "" {
+			flag.Usage()
+			os.Exit(1)
+		}
+		isRotate = true
+		logfile = rotatefile
 	} else {
-		if logfile == "" || maxLogSize == 0 || maxTotalSize == 0 {
+		if logfile == "" || maxLogSize == 0 || maxTotalSize == 0 || dumpfile != "" || rotatefile != "" {
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -158,12 +167,24 @@ func runDump() error {
 	return err
 }
 
+func runRotate() error {
+	logger := tumble.NewLogger(
+		/* Filepath:       */ logfile,
+		/* MaxLogSizeMB:   */ 100000000000,
+		/* MaxTotalSizeMB: */ 999999999999,
+		/* FormatFn:       */ nil,
+	)
+	return logger.RotateClose()
+}
+
 func main() {
 	init_globals()
 
 	var err error
 	if isDump {
 		err = runDump()
+	} else if isRotate {
+		err = runRotate()
 	} else {
 		err = runLog()
 	}
