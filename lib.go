@@ -59,8 +59,8 @@ import (
 //
 type Logger struct {
 	Filepath       string
-	MaxLogSizeMB   uint
-	MaxTotalSizeMB uint
+	MaxLogSizeMB   uint64
+	MaxTotalSizeMB uint64
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)
 
 	file          io.WriteCloser

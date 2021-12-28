@@ -18,10 +18,10 @@ var _ Filestamper = (*Logger)(nil)    // Implement Filestamper
 var (
 	// These constants are mocked out by tests
 	nowFn = time.Now
-	MB    = uint(1024 * 1024)
+	MB    = uint64(1024 * 1024)
 )
 
-func NewLogger(fpath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func(msg []byte, buf []byte) ([]byte, int)) *Logger {
+func NewLogger(fpath string, maxLogSizeMB, maxTotalSizeMB uint64, formatFn func(msg []byte, buf []byte) ([]byte, int)) *Logger {
 	logger := &Logger{
 		/* Filepath:       */ filepath.Clean(fpath),
 		/* MaxLogSizeMB:   */ maxLogSizeMB,
