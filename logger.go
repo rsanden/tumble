@@ -29,6 +29,7 @@ func NewLogger(fpath string, maxLogSizeMB, maxTotalSizeMB uint, formatFn func(ms
 		/* FormatFn:       */ formatFn,
 
 		/* file:           */ nil,
+		/* fileCloseOnce:  */ sync.Once{},
 		/* size:           */ 0,
 		/* millCh:         */ make(chan struct{}, 2),
 		/* millClosingCh:  */ make(chan struct{}),
@@ -89,13 +90,11 @@ func (me *Logger) closeFile() error {
 		return nil
 	}
 
-	err := me.Flush()
-	if ERR == nil {
+	if err := me.Flush(); ERR == nil {
 		ERR = err
 	}
 
-	err = me.file.Close()
-	if ERR == nil {
+	if err := me.file.Close(); ERR == nil {
 		ERR = err
 	}
 	me.file = nil
@@ -103,7 +102,10 @@ func (me *Logger) closeFile() error {
 	return ERR
 }
 func (me *Logger) Close() error {
-	err := me.closeFile()
+	var err error
+	me.fileCloseOnce.Do(func() {
+		err = me.closeFile()
+	})
 	me.StopMill()
 	me.millCloseOnce.Do(func() {
 		close(me.millCh)

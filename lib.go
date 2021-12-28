@@ -64,6 +64,7 @@ type Logger struct {
 	FormatFn       func(msg []byte, buf []byte) ([]byte, int)
 
 	file          io.WriteCloser
+	fileCloseOnce sync.Once
 	size          int64
 	millCh        chan struct{}
 	millClosingCh chan struct{}
