@@ -653,26 +653,19 @@ func createDumpBinaryData() {
 	}
 }
 
-func setOpenFilesLimit(n uint64) {
+func ensureOpenFilesLimit(n uint64) {
 	var rLimit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
 		panic(err)
 	}
-	rLimit.Cur = n
-	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
-		panic(err)
-	}
-	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
-		panic(err)
-	}
 	if rLimit.Cur != n {
-		panic("failed to set open files limit")
+		panic(fmt.Sprintf("open files limit is %d but required %d", rLimit.Cur, n))
 	}
 }
 
 func TestIntegrationDumpTextMode(t *testing.T) {
-	// Set open files limit to 1024 for test
-	setOpenFilesLimit(1024)
+	// This test must be run with "ulimit -n 512" to function correctly
+	ensureOpenFilesLimit(512)
 
 	setup()
 	createDumpTextData()
@@ -687,7 +680,7 @@ func TestIntegrationDumpTextMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	idx := 2001 - int(0.75*1024.0)
+	idx := 2001 - int(0.75*512.0)
 
 	stdoutReader := strings.NewReader(stdout.String())
 	stdoutScanner := bufio.NewScanner(stdoutReader)

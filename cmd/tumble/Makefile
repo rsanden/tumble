@@ -18,4 +18,4 @@ exe: clean
 	go build
 
 test: exe
-	go test -parallel 1
+	ulimit -n 512 && go test -parallel 1
