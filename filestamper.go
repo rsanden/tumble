@@ -21,10 +21,10 @@ type Filestamper interface {
 }
 
 // This is:
-//           ""  in          "foo.log",
-//        "tmp/  in      "tmp/foo.log"
-//   "/path/to/" in "/path/to/foo.log"
 //
+//	        ""  in          "foo.log",
+//	     "tmp/  in      "tmp/foo.log"
+//	"/path/to/" in "/path/to/foo.log"
 func dirpath(this Filestamper) string {
 	if filepath.Dir(this.filepath()) == "." {
 		return ""
